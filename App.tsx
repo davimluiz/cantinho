@@ -17,7 +17,7 @@ const Receipt = ({ order }: { order: Order | null }) => {
     );
 
     return (
-        <div className="w-full max-w-[80mm] mx-auto text-black font-mono text-sm">
+        <div className="w-full max-w-[80mm] mx-auto text-black font-mono text-sm p-2">
             <div className="text-center">
                 <h1 className="font-bold text-xl uppercase mb-1">Cantinho da Sandra</h1>
                 <p className="text-xs">Lanches & Bebidas</p>
@@ -460,9 +460,8 @@ export default function App() {
         // Small delay to ensure the DOM is updated with the receipt content
         const timer = setTimeout(() => {
             window.print();
-            // Reset receipt order after print dialog opens so it doesn't linger
-            // Note: browser print blocks execution, so this runs after dialog closes/prints
-            // but we'll leave it in state for a moment just in case
+            // Reset receipt order after printing (cleanup)
+            setReceiptOrder(null);
         }, 100);
         return () => clearTimeout(timer);
     }
@@ -558,7 +557,6 @@ export default function App() {
     handlePrint(newOrder);
 
     setView('HOME');
-    // alert("Pedido realizado com sucesso!"); // Optional, print dialog usually confirms action
   };
 
   return (

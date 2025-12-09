@@ -56,42 +56,45 @@
       @media print {
         @page {
           margin: 0;
-          size: auto; /* Remove browser default headers/footers */
+          size: auto;
         }
         
-        body {
+        /* Reset background and colors for printing */
+        body, html, #root {
           background: white !important;
+          background-image: none !important;
           color: black !important;
           margin: 0 !important;
           padding: 0 !important;
-          width: 100%;
-          height: auto;
+          height: auto !important;
+          width: 100% !important;
           overflow: visible !important;
         }
 
-        /* Hide everything by default */
-        body > * {
+        /* Hide the main App UI */
+        .no-print {
           display: none !important;
         }
 
-        /* Show only the printable area */
-        #root, .no-print {
-          display: none !important;
-        }
-
+        /* Force display of the receipt area */
         .printable-area {
           display: block !important;
+          visibility: visible !important;
           position: absolute;
           top: 0;
           left: 0;
-          width: 100%; /* Ajusta automaticamente para 80mm ou 58mm dependendo da impressora */
+          width: 100%;
           margin: 0;
-          padding: 10px; /* Pequena margem de segurança */
-          font-family: 'Courier Prime', 'Courier New', monospace; /* Fonte monoespaçada para alinhar */
-          font-size: 14px;
-          line-height: 1.2;
+          padding: 0; /* Remove padding to control margins via the component if needed */
           background-color: white;
           color: black;
+          font-family: 'Courier Prime', 'Courier New', monospace;
+        }
+        
+        /* Ensure all children of printable area are visible */
+        .printable-area * {
+          visibility: visible !important;
+          color: black !important;
         }
       }
     </style>
