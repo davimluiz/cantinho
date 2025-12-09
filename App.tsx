@@ -5,7 +5,81 @@ import { CATEGORIES, PRODUCTS, PAYMENT_METHODS } from './constants';
 import { Category, Product, CustomerInfo, CartItem, PaymentMethod, Order, OrderStatus } from './types';
 import { printerService } from './services/printerService';
 
-// --- SUB-COMPONENTS EXTRACTED TO FIX RE-RENDER/FOCUS BUG ---
+// --- RECEIPT COMPONENT FOR BROWSER PRINTING ---
+const Receipt = ({ order }: { order: Order | null }) => {
+    if (!order) return null;
+
+    const date = new Date(order.createdAt).toLocaleString('pt-BR');
+    
+    // Style helper for dashed lines
+    const DashedLine = () => (
+        <div className="w-full border-b border-black border-dashed my-2" style={{ borderBottomStyle: 'dashed' }}></div>
+    );
+
+    return (
+        <div className="w-full max-w-[80mm] mx-auto text-black font-mono text-sm">
+            <div className="text-center">
+                <h1 className="font-bold text-xl uppercase mb-1">Cantinho da Sandra</h1>
+                <p className="text-xs">Lanches & Bebidas</p>
+                <DashedLine />
+            </div>
+
+            <div className="mb-2">
+                <p><strong>Pedido:</strong> #{order.id.slice(-4)}</p>
+                <p><strong>Data:</strong> {date}</p>
+                <DashedLine />
+            </div>
+
+            <div className="mb-2">
+                <h2 className="font-bold uppercase mb-1">Cliente</h2>
+                <p className="uppercase">{order.customer.name}</p>
+                <p>{order.customer.phone}</p>
+                {order.customer.address && (
+                    <p className="text-xs mt-1">
+                        {order.customer.address}
+                        {order.customer.reference && ` - Ref: ${order.customer.reference}`}
+                    </p>
+                )}
+                <p className="mt-1 font-bold">Pagamento: {order.customer.paymentMethod}</p>
+                <DashedLine />
+            </div>
+
+            <div className="mb-2">
+                <h2 className="font-bold uppercase mb-1">Itens</h2>
+                <table className="w-full text-left">
+                    <thead>
+                        <tr>
+                            <th className="w-[10%]">Qtd</th>
+                            <th className="w-[60%]">Item</th>
+                            <th className="w-[30%] text-right">$$</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {order.items.map((item, idx) => (
+                            <tr key={idx} className="align-top">
+                                <td>{item.quantity}</td>
+                                <td>{item.name}</td>
+                                <td className="text-right">{(item.price * item.quantity).toFixed(2)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                <DashedLine />
+            </div>
+
+            <div className="text-right text-lg font-bold mb-4">
+                TOTAL: R$ {order.total.toFixed(2)}
+            </div>
+
+            <div className="text-center text-xs mt-4">
+                <p>Obrigado pela preferência!</p>
+                <p className="mt-1">***</p>
+            </div>
+        </div>
+    );
+};
+
+// --- SUB-COMPONENTS ---
 
 const HomeView = ({ 
   onStartOrder, 
@@ -33,9 +107,19 @@ const HomeView = ({
         Ver Histórico de Pedidos
       </Button>
 
-      <Button onClick={onConnectPrinter} variant="secondary" fullWidth className="text-sm py-2 mt-8 opacity-80 border-dashed">
-        {isPrinterConnected ? "🔌 Impressora Conectada" : "🖨️ Conectar Impressora USB"}
-      </Button>
+      {/* Optional WebUSB Button if needed later, kept for compatibility */}
+      {isPrinterConnected ? (
+          <div className="text-green-400 text-sm mt-4 bg-green-900/20 py-2 rounded-lg border border-green-500/30">
+              WebUSB Conectado
+          </div>
+      ) : (
+          <button 
+            onClick={onConnectPrinter} 
+            className="text-xs text-gray-500 mt-8 underline hover:text-[#D6BB56]"
+          >
+            Configurar WebUSB (Opcional)
+          </button>
+      )}
     </div>
   </div>
 );
@@ -320,7 +404,7 @@ const HistoryView = ({
                                 onClick={() => onPrint(order)}
                                 className="text-sm bg-[#D6BB56] text-[#292927] font-bold px-3 py-1 rounded hover:brightness-110 shadow-md"
                             >
-                                🖨️ Reimprimir
+                                🖨️ Imprimir
                             </button>
                         </div>
                     </div>
@@ -349,7 +433,8 @@ export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  // Printer State
+  // Printing State
+  const [receiptOrder, setReceiptOrder] = useState<Order | null>(null);
   const [isPrinterConnected, setIsPrinterConnected] = useState(false);
 
   // Load orders from local storage on mount
@@ -369,14 +454,28 @@ export default function App() {
     localStorage.setItem('orders', JSON.stringify(orders));
   }, [orders]);
 
-  // Printer Connection Handler
+  // Handle actual browser printing
+  useEffect(() => {
+    if (receiptOrder) {
+        // Small delay to ensure the DOM is updated with the receipt content
+        const timer = setTimeout(() => {
+            window.print();
+            // Reset receipt order after print dialog opens so it doesn't linger
+            // Note: browser print blocks execution, so this runs after dialog closes/prints
+            // but we'll leave it in state for a moment just in case
+        }, 100);
+        return () => clearTimeout(timer);
+    }
+  }, [receiptOrder]);
+
+  // Printer Connection Handler (Legacy WebUSB)
   const connectPrinter = async () => {
     const connected = await printerService.connect();
     setIsPrinterConnected(connected);
     if (connected) {
-        alert("Impressora conectada com sucesso!");
+        alert("Impressora WebUSB conectada.");
     } else {
-        alert("Não foi possível conectar via USB. O sistema usará a impressão padrão do navegador.");
+        alert("WebUSB não disponível. Utilizando driver do navegador.");
     }
   };
 
@@ -427,6 +526,19 @@ export default function App() {
     });
   };
 
+  const handlePrint = (order: Order) => {
+    // If WebUSB is connected, try that first
+    if (isPrinterConnected) {
+        printerService.printOrder(order).catch(() => {
+            // Fallback to browser print if WebUSB fails
+            setReceiptOrder(order);
+        });
+    } else {
+        // Browser print
+        setReceiptOrder(order);
+    }
+  };
+
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const finishOrder = async () => {
@@ -442,17 +554,19 @@ export default function App() {
     const updatedOrders = [newOrder, ...orders];
     setOrders(updatedOrders);
     
-    // Print logic
-    await printerService.printOrder(newOrder);
+    // Trigger Print
+    handlePrint(newOrder);
 
     setView('HOME');
-    alert("Pedido realizado com sucesso!");
+    // alert("Pedido realizado com sucesso!"); // Optional, print dialog usually confirms action
   };
 
   return (
     <div className="min-h-screen text-[#EFF0F3] font-sans selection:bg-[#D6BB56] selection:text-[#292927]">
-      {/* Hidden print area for window.print fallback */}
-      <div className="printable-area hidden"></div>
+      {/* Hidden print area that becomes visible during window.print() */}
+      <div className="printable-area hidden bg-white text-black">
+          <Receipt order={receiptOrder} />
+      </div>
 
       <div className="no-print h-full">
         {view === 'HOME' && (
@@ -503,7 +617,7 @@ export default function App() {
             <HistoryView 
                 orders={orders}
                 onBack={() => setView('HOME')}
-                onPrint={(order) => printerService.printOrder(order)}
+                onPrint={handlePrint}
             />
         )}
       </div>

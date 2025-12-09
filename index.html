@@ -6,6 +6,7 @@
     <title>Cantinho da Sandra</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
     <style>
       body {
         font-family: 'Roboto', sans-serif;
@@ -51,10 +52,47 @@
         background: rgba(214, 187, 86, 0.8);
       }
       
+      /* PRINT STYLES - Critical for Epson TM-T20X */
       @media print {
-        .no-print { display: none !important; }
-        .printable-area { display: block !important; color: black; background: white; width: 100%; }
-        body { background: white; }
+        @page {
+          margin: 0;
+          size: auto; /* Remove browser default headers/footers */
+        }
+        
+        body {
+          background: white !important;
+          color: black !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100%;
+          height: auto;
+          overflow: visible !important;
+        }
+
+        /* Hide everything by default */
+        body > * {
+          display: none !important;
+        }
+
+        /* Show only the printable area */
+        #root, .no-print {
+          display: none !important;
+        }
+
+        .printable-area {
+          display: block !important;
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%; /* Ajusta automaticamente para 80mm ou 58mm dependendo da impressora */
+          margin: 0;
+          padding: 10px; /* Pequena margem de segurança */
+          font-family: 'Courier Prime', 'Courier New', monospace; /* Fonte monoespaçada para alinhar */
+          font-size: 14px;
+          line-height: 1.2;
+          background-color: white;
+          color: black;
+        }
       }
     </style>
   <script type="importmap">
