@@ -38,6 +38,7 @@ export interface CartItem extends Product {
   removedIngredients?: string[]; // Itens que o cliente desmarcou
   additions?: string[]; // Extras selecionados
   observation?: string;
+  packaging?: string; // Para Açaí: Mesa, Com Tampa, Sem Tampa
 }
 
 export interface CustomerInfo {

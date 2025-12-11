@@ -10,6 +10,7 @@ export const COLORS = {
 
 export const CATEGORIES: Category[] = [
   { id: 'lanches', name: 'Lanches', icon: '🍔' },
+  { id: 'acai', name: 'Açaí', icon: '🍧' },
   { id: 'franguinho', name: 'Franguinho', icon: '🍗' },
   { id: 'porcoes', name: 'Porções', icon: '🍟' },
   { id: 'bebidas', name: 'Bebidas', icon: '🥤' },
@@ -85,6 +86,13 @@ export const PRODUCTS: Product[] = [
     ingredients: ['Pão', '3 Bifes', 'Frango', '3 Ovos', 'Bacon', '3 Queijos', '3 Presuntos', 'Calabresa', ...SALADA_COMPLETA] 
   },
 
+  // --- AÇAÍ ---
+  { id: 'a1', categoryId: 'acai', name: 'Açaí 300 ML', price: 15.00 },
+  { id: 'a2', categoryId: 'acai', name: 'Açaí 400 ML', price: 17.00 },
+  { id: 'a3', categoryId: 'acai', name: 'Açaí 500 ML', price: 19.00 },
+  { id: 'a4', categoryId: 'acai', name: 'Açaí 700 ML', price: 23.00 },
+  { id: 'a5', categoryId: 'acai', name: 'Açaí 1000 ML', price: 30.00 },
+
   // --- FRANGUINHO ---
   { id: 'f1', categoryId: 'franguinho', name: 'Franguinho 250g (1 Acomp.)', price: 35.00, maxSides: 1 },
   { id: 'f2', categoryId: 'franguinho', name: 'Franguinho 500g (1 Acomp.)', price: 55.00, maxSides: 1 },
@@ -151,4 +159,56 @@ export const FRANGUINHO_SIDES = [
   "Bolinha de queijo",
   "Bolinha de queijo com presunto",
   "Coxinha"
+];
+
+// --- OPÇÕES ESPECÍFICAS DE AÇAÍ ---
+
+export const ACAI_PACKAGING = [
+  "Mesa",
+  "Sem tampa",
+  "Com tampa"
+];
+
+export const ACAI_COMPLEMENTS = [
+  "Amendoim",
+  "Bolinhas de chocolate",
+  "Choco Ball",
+  "Chocolate cremoso",
+  "Bisket",
+  "Flocos de arroz",
+  "Uva passas",
+  "Gotas de chocolate",
+  "Granola",
+  "Granulado",
+  "Leite em pó",
+  "Ovomaltine",
+  "Paçoca",
+  "Sucrilhos"
+];
+
+export const ACAI_TOPPINGS = [
+  "Amora",
+  "Chocolate",
+  "Chocolate quente",
+  "Leite condensado",
+  "Limão",
+  "Mel",
+  "Morango",
+  "Uva"
+];
+
+export const ACAI_FRUITS = [
+  "Uva",
+  "Kiwi",
+  "Maçã",
+  "Manga",
+  "Morango",
+  "Banana"
+];
+
+export const ACAI_PAID_EXTRAS = [
+  { name: 'Nutella', price: 5.00 },
+  { name: 'M. Morango', price: 4.00 },
+  { name: 'M. Maracujá', price: 4.00 },
+  { name: 'M. Cupuaçu', price: 4.00 },
 ];

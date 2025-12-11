@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './components/Button';
 import { Input, Select } from './components/Input';
-import { CATEGORIES, PRODUCTS, PAYMENT_METHODS, ORDER_TYPES, EXTRAS_OPTIONS, FRANGUINHO_SIDES } from './constants';
+import { 
+    CATEGORIES, PRODUCTS, PAYMENT_METHODS, ORDER_TYPES, 
+    EXTRAS_OPTIONS, FRANGUINHO_SIDES,
+    ACAI_PACKAGING, ACAI_COMPLEMENTS, ACAI_TOPPINGS, ACAI_FRUITS, ACAI_PAID_EXTRAS
+} from './constants';
 import { Category, Product, CustomerInfo, CartItem, PaymentMethod, Order, OrderStatus, OrderType } from './types';
 import { printerService } from './services/printerService';
 
@@ -68,7 +72,14 @@ const Receipt = ({ order }: { order: Order | null }) => {
                             <React.Fragment key={idx}>
                                 <tr className="align-top font-bold">
                                     <td>{item.quantity}</td>
-                                    <td>{item.name}</td>
+                                    <td>
+                                        {item.name}
+                                        {item.packaging && (
+                                            <div className="text-[10px] uppercase font-normal text-black/70">
+                                                [{item.packaging}]
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className="text-right">{(item.price * item.quantity).toFixed(2)}</td>
                                 </tr>
                                 {/* Customizations Row */}
@@ -272,26 +283,42 @@ const ProductModal = ({
     onClose: () => void,
     onConfirm: (item: CartItem) => void
 }) => {
+    // Shared State
     const [removed, setRemoved] = useState<string[]>([]);
     const [additions, setAdditions] = useState<string[]>([]);
+    
+    // Franguinho State
     const [selectedSides, setSelectedSides] = useState<string[]>([]);
+
+    // Açaí State
+    const [acaiPackaging, setAcaiPackaging] = useState<string>('Mesa');
+    const [acaiFreeExtras, setAcaiFreeExtras] = useState<string[]>([]);
+    const [acaiPaidExtras, setAcaiPaidExtras] = useState<string[]>([]);
 
     useEffect(() => {
         setRemoved([]);
         setAdditions([]);
         setSelectedSides([]);
+        
+        // Reset Açaí
+        setAcaiPackaging('Mesa');
+        setAcaiFreeExtras([]);
+        setAcaiPaidExtras([]);
     }, [product]);
 
     if (!isOpen || !product) return null;
 
+    // --- LOGIC HANDLERS ---
+    
+    // Standard/Lanche
     const toggleIngredient = (ing: string) => {
         setRemoved(prev => prev.includes(ing) ? prev.filter(i => i !== ing) : [...prev, ing]);
     };
-
     const toggleAddition = (add: string) => {
         setAdditions(prev => prev.includes(add) ? prev.filter(a => a !== add) : [...prev, add]);
     };
 
+    // Franguinho
     const toggleSide = (side: string) => {
         if (selectedSides.includes(side)) {
             setSelectedSides(prev => prev.filter(s => s !== side));
@@ -302,17 +329,47 @@ const ProductModal = ({
         }
     };
 
-    // Calculate total price including extras (only for Lanches)
-    const extrasTotal = additions.reduce((acc, curr) => {
-        const opt = EXTRAS_OPTIONS.find(e => e.name === curr);
-        return acc + (opt?.price || 0);
-    }, 0);
+    // Açaí
+    const toggleAcaiFree = (item: string) => {
+        setAcaiFreeExtras(prev => prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]);
+    };
+    const toggleAcaiPaid = (item: string) => {
+        setAcaiPaidExtras(prev => prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item]);
+    };
+
+    // --- CALCULATIONS ---
+
+    const isLanche = product.categoryId === 'lanches';
+    const isFranguinho = product.categoryId === 'franguinho';
+    const isAcai = product.categoryId === 'acai';
+
+    let extraPrice = 0;
+    if (isLanche) {
+        extraPrice = additions.reduce((acc, curr) => {
+            const opt = EXTRAS_OPTIONS.find(e => e.name === curr);
+            return acc + (opt?.price || 0);
+        }, 0);
+    } else if (isAcai) {
+        extraPrice = acaiPaidExtras.reduce((acc, curr) => {
+            const opt = ACAI_PAID_EXTRAS.find(e => e.name === curr);
+            return acc + (opt?.price || 0);
+        }, 0);
+    }
     
-    const totalPrice = product.price + extrasTotal;
+    const totalPrice = product.price + extraPrice;
 
     const handleConfirm = () => {
-        // Combine paid additions and free selected sides into one list for the cart
-        const allAdditions = [...additions, ...selectedSides];
+        let finalAdditions: string[] = [];
+        let finalPackaging: string | undefined = undefined;
+
+        if (isLanche) {
+            finalAdditions = [...additions];
+        } else if (isFranguinho) {
+            finalAdditions = [...selectedSides];
+        } else if (isAcai) {
+            finalPackaging = acaiPackaging;
+            finalAdditions = [...acaiFreeExtras, ...acaiPaidExtras];
+        }
 
         onConfirm({
             ...product,
@@ -320,14 +377,11 @@ const ProductModal = ({
             cartId: Date.now().toString(),
             quantity: 1,
             removedIngredients: removed,
-            additions: allAdditions,
+            additions: finalAdditions,
+            packaging: finalPackaging,
             name: product.name 
         });
     };
-
-    // Helper flags
-    const isLanche = product.categoryId === 'lanches';
-    const isFranguinho = product.categoryId === 'franguinho';
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
@@ -340,59 +394,49 @@ const ProductModal = ({
                 <div className="p-4 overflow-y-auto flex-1">
                     <p className="text-white text-lg font-bold mb-4">R$ {product.price.toFixed(2)}</p>
                     
-                    {/* --- LANCHES: INGREDIENTS --- */}
-                    {isLanche && product.ingredients && product.ingredients.length > 0 && (
-                        <div className="mb-6">
-                            <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Ingredientes (Desmarque para retirar)</h4>
-                            <div className="grid grid-cols-2 gap-2">
-                                {product.ingredients.map(ing => {
-                                    const isRemoved = removed.includes(ing);
-                                    return (
-                                        <label key={ing} className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${!isRemoved ? 'bg-[#D6BB56]/20 border-[#D6BB56]' : 'bg-transparent border-white/10 opacity-50'}`}>
-                                            <input 
-                                                type="checkbox" 
-                                                className="hidden" 
-                                                checked={!isRemoved}
-                                                onChange={() => toggleIngredient(ing)}
-                                            />
-                                            <span className={`text-sm font-bold ${!isRemoved ? 'text-white' : 'text-gray-400 line-through'}`}>{ing}</span>
-                                        </label>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* --- LANCHES: PAID EXTRAS --- */}
+                    {/* --- LANCHES SECTION --- */}
                     {isLanche && (
-                        <div className="mb-4">
-                            <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Adicionais</h4>
-                            <div className="space-y-2">
-                                {EXTRAS_OPTIONS.map(opt => {
-                                    const isAdded = additions.includes(opt.name);
-                                    return (
-                                        <label key={opt.name} className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${isAdded ? 'bg-green-500/20 border-green-500' : 'bg-transparent border-white/10 hover:bg-white/5'}`}>
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-5 h-5 rounded border flex items-center justify-center ${isAdded ? 'bg-green-500 border-green-500' : 'border-gray-500'}`}>
-                                                    {isAdded && <span className="text-white text-xs">✓</span>}
+                        <>
+                             {product.ingredients && product.ingredients.length > 0 && (
+                                <div className="mb-6">
+                                    <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Ingredientes (Desmarque para retirar)</h4>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {product.ingredients.map(ing => {
+                                            const isRemoved = removed.includes(ing);
+                                            return (
+                                                <label key={ing} className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${!isRemoved ? 'bg-[#D6BB56]/20 border-[#D6BB56]' : 'bg-transparent border-white/10 opacity-50'}`}>
+                                                    <input type="checkbox" className="hidden" checked={!isRemoved} onChange={() => toggleIngredient(ing)} />
+                                                    <span className={`text-sm font-bold ${!isRemoved ? 'text-white' : 'text-gray-400 line-through'}`}>{ing}</span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                            <div className="mb-4">
+                                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Adicionais</h4>
+                                <div className="space-y-2">
+                                    {EXTRAS_OPTIONS.map(opt => {
+                                        const isAdded = additions.includes(opt.name);
+                                        return (
+                                            <label key={opt.name} className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${isAdded ? 'bg-green-500/20 border-green-500' : 'bg-transparent border-white/10 hover:bg-white/5'}`}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${isAdded ? 'bg-green-500 border-green-500' : 'border-gray-500'}`}>
+                                                        {isAdded && <span className="text-white text-xs">✓</span>}
+                                                    </div>
+                                                    <span className="text-sm text-white">{opt.name}</span>
                                                 </div>
-                                                <span className="text-sm text-white">{opt.name}</span>
-                                            </div>
-                                            <span className="text-[#D6BB56] font-bold">+ R$ {opt.price.toFixed(2)}</span>
-                                            <input 
-                                                type="checkbox" 
-                                                className="hidden" 
-                                                checked={isAdded}
-                                                onChange={() => toggleAddition(opt.name)}
-                                            />
-                                        </label>
-                                    );
-                                })}
+                                                <span className="text-[#D6BB56] font-bold">+ R$ {opt.price.toFixed(2)}</span>
+                                                <input type="checkbox" className="hidden" checked={isAdded} onChange={() => toggleAddition(opt.name)} />
+                                            </label>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
+                        </>
                     )}
 
-                    {/* --- FRANGUINHO: SIDES --- */}
+                    {/* --- FRANGUINHO SECTION --- */}
                     {isFranguinho && product.maxSides && (
                         <div className="mb-4">
                             <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">
@@ -411,13 +455,7 @@ const ProductModal = ({
                                                 </div>
                                                 <span className="text-sm text-white">{side}</span>
                                             </div>
-                                            <input 
-                                                type="checkbox" 
-                                                className="hidden" 
-                                                checked={isSelected}
-                                                onChange={() => toggleSide(side)}
-                                                disabled={isDisabled}
-                                            />
+                                            <input type="checkbox" className="hidden" checked={isSelected} onChange={() => toggleSide(side)} disabled={isDisabled} />
                                         </label>
                                     );
                                 })}
@@ -427,13 +465,114 @@ const ProductModal = ({
                             )}
                         </div>
                     )}
+
+                    {/* --- AÇAÍ SECTION --- */}
+                    {isAcai && (
+                        <div className="space-y-6">
+                            {/* Embalagem */}
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Embalagem</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {ACAI_PACKAGING.map(pkg => (
+                                        <button
+                                            key={pkg}
+                                            onClick={() => setAcaiPackaging(pkg)}
+                                            className={`px-4 py-2 rounded-lg text-sm font-bold border transition-all ${acaiPackaging === pkg ? 'bg-[#D6BB56] text-black border-[#D6BB56]' : 'bg-transparent text-gray-300 border-white/20 hover:bg-white/10'}`}
+                                        >
+                                            {pkg}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Complementos (Grátis) */}
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Complementos</h4>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {ACAI_COMPLEMENTS.map(item => {
+                                        const isSelected = acaiFreeExtras.includes(item);
+                                        return (
+                                            <label key={item} className={`flex items-center p-2 rounded border cursor-pointer ${isSelected ? 'bg-[#D6BB56]/20 border-[#D6BB56]' : 'border-white/10'}`}>
+                                                <input type="checkbox" className="hidden" checked={isSelected} onChange={() => toggleAcaiFree(item)} />
+                                                <div className={`w-4 h-4 rounded-sm border mr-2 flex items-center justify-center ${isSelected ? 'bg-[#D6BB56] border-[#D6BB56]' : 'border-gray-500'}`}>
+                                                    {isSelected && <span className="text-black text-[10px]">✓</span>}
+                                                </div>
+                                                <span className="text-xs text-white">{item}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Coberturas (Grátis) */}
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Coberturas</h4>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {ACAI_TOPPINGS.map(item => {
+                                        const isSelected = acaiFreeExtras.includes(item);
+                                        return (
+                                            <label key={item} className={`flex items-center p-2 rounded border cursor-pointer ${isSelected ? 'bg-[#D6BB56]/20 border-[#D6BB56]' : 'border-white/10'}`}>
+                                                <input type="checkbox" className="hidden" checked={isSelected} onChange={() => toggleAcaiFree(item)} />
+                                                <div className={`w-4 h-4 rounded-sm border mr-2 flex items-center justify-center ${isSelected ? 'bg-[#D6BB56] border-[#D6BB56]' : 'border-gray-500'}`}>
+                                                    {isSelected && <span className="text-black text-[10px]">✓</span>}
+                                                </div>
+                                                <span className="text-xs text-white">{item}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                             {/* Frutas (Grátis) */}
+                             <div>
+                                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Frutas</h4>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {ACAI_FRUITS.map(item => {
+                                        const isSelected = acaiFreeExtras.includes(item);
+                                        return (
+                                            <label key={item} className={`flex items-center p-2 rounded border cursor-pointer ${isSelected ? 'bg-[#D6BB56]/20 border-[#D6BB56]' : 'border-white/10'}`}>
+                                                <input type="checkbox" className="hidden" checked={isSelected} onChange={() => toggleAcaiFree(item)} />
+                                                <div className={`w-4 h-4 rounded-sm border mr-2 flex items-center justify-center ${isSelected ? 'bg-[#D6BB56] border-[#D6BB56]' : 'border-gray-500'}`}>
+                                                    {isSelected && <span className="text-black text-[10px]">✓</span>}
+                                                </div>
+                                                <span className="text-xs text-white">{item}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Adicionais Pagos */}
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Adicionais (+ $$)</h4>
+                                <div className="space-y-2">
+                                    {ACAI_PAID_EXTRAS.map(opt => {
+                                        const isSelected = acaiPaidExtras.includes(opt.name);
+                                        return (
+                                            <label key={opt.name} className={`flex items-center justify-between p-2 rounded border cursor-pointer ${isSelected ? 'bg-green-500/20 border-green-500' : 'border-white/10'}`}>
+                                                 <div className="flex items-center">
+                                                    <input type="checkbox" className="hidden" checked={isSelected} onChange={() => toggleAcaiPaid(opt.name)} />
+                                                    <div className={`w-4 h-4 rounded-sm border mr-2 flex items-center justify-center ${isSelected ? 'bg-green-500 border-green-500' : 'border-gray-500'}`}>
+                                                        {isSelected && <span className="text-white text-[10px]">✓</span>}
+                                                    </div>
+                                                    <span className="text-xs text-white">{opt.name}</span>
+                                                </div>
+                                                <span className="text-[#D6BB56] text-xs font-bold">+ R$ {opt.price.toFixed(2)}</span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
 
                 <div className="p-4 border-t border-white/10 bg-black/20">
                     <Button 
                         onClick={handleConfirm} 
                         fullWidth
-                        disabled={isFranguinho && selectedSides.length < (product.maxSides || 0)} // Optional: force selection of all sides
+                        disabled={isFranguinho && selectedSides.length < (product.maxSides || 0)}
                         className={isFranguinho && selectedSides.length < (product.maxSides || 0) ? 'opacity-50' : ''}
                     >
                         ADICIONAR - R$ {totalPrice.toFixed(2)}
@@ -642,7 +781,10 @@ const SummaryView = ({
                         <div key={item.cartId} className="flex flex-col mb-4 border-b border-white/5 pb-2 last:border-0 last:pb-0">
                             <div className="flex justify-between items-start">
                                 <div className="flex-1">
-                                    <p className="font-bold text-white">{item.name}</p>
+                                    <p className="font-bold text-white">
+                                        {item.name}
+                                        {item.packaging && <span className="text-xs text-[#D6BB56] ml-2 font-normal">[{item.packaging}]</span>}
+                                    </p>
                                     <p className="text-xs text-gray-400">R$ {item.price.toFixed(2)}</p>
                                 </div>
                                 <div className="flex items-center gap-3">
