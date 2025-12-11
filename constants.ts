@@ -15,15 +15,18 @@ export const CATEGORIES: Category[] = [
   { id: 'bebidas', name: 'Bebidas', icon: '🥤' },
 ];
 
+// Ingredientes padrão de salada para reutilização
+const SALADA_COMPLETA = ['Alface', 'Tomate', 'Milho', 'Batata Palha'];
+
 export const PRODUCTS: Product[] = [
   // --- LANCHES ---
   { 
     id: 'l1', categoryId: 'lanches', name: 'Hambúrguer', price: 10.00, 
-    ingredients: ['Pão', 'Bife', 'Salada'] 
+    ingredients: ['Pão', 'Bife', ...SALADA_COMPLETA] 
   },
   { 
     id: 'l2', categoryId: 'lanches', name: 'X-Vegetariano', price: 10.00, 
-    ingredients: ['Pão', '2 Queijos', 'Catupiry', 'Salada'] 
+    ingredients: ['Pão', '2 Queijos', 'Catupiry', ...SALADA_COMPLETA] 
   },
   { 
     id: 'l3', categoryId: 'lanches', name: 'Misto Quente', price: 12.00, 
@@ -31,55 +34,55 @@ export const PRODUCTS: Product[] = [
   },
   { 
     id: 'l4', categoryId: 'lanches', name: 'X-Burguer', price: 14.00, 
-    ingredients: ['Pão', 'Bife', 'Presunto', 'Queijo', 'Salada'] 
+    ingredients: ['Pão', 'Bife', 'Presunto', 'Queijo', ...SALADA_COMPLETA] 
   },
   { 
     id: 'l5', categoryId: 'lanches', name: 'X-Egg', price: 17.00, 
-    ingredients: ['Pão', 'Bife', 'Ovo', 'Queijo', 'Salada'] 
+    ingredients: ['Pão', 'Bife', 'Ovo', 'Queijo', ...SALADA_COMPLETA] 
   },
   { 
     id: 'l6', categoryId: 'lanches', name: 'X-Bacon', price: 18.00, 
-    ingredients: ['Pão', 'Bife', 'Bacon', 'Queijo', 'Salada'] 
+    ingredients: ['Pão', 'Bife', 'Bacon', 'Queijo', ...SALADA_COMPLETA] 
   },
   { 
     id: 'l7', categoryId: 'lanches', name: 'X-Calabresa', price: 18.00, 
-    ingredients: ['Pão', 'Bife', 'Calabresa', 'Queijo', 'Salada'] 
+    ingredients: ['Pão', 'Bife', 'Calabresa', 'Queijo', ...SALADA_COMPLETA] 
   },
   { 
     id: 'l8', categoryId: 'lanches', name: 'X-Egg Bacon', price: 20.00, 
-    ingredients: ['Pão', 'Bife', 'Ovo', 'Bacon', 'Queijo', 'Salada'] 
+    ingredients: ['Pão', 'Bife', 'Ovo', 'Bacon', 'Queijo', ...SALADA_COMPLETA] 
   },
   { 
     id: 'l9', categoryId: 'lanches', name: 'X-Egg Calabresa', price: 20.00, 
-    ingredients: ['Pão', 'Bife', 'Ovo', 'Calabresa', 'Queijo', 'Salada'] 
+    ingredients: ['Pão', 'Bife', 'Ovo', 'Calabresa', 'Queijo', ...SALADA_COMPLETA] 
   },
   { 
     id: 'l10', categoryId: 'lanches', name: 'X-Tudo', price: 22.00, 
-    ingredients: ['Pão', 'Bife', 'Queijo', 'Presunto', 'Bacon', 'Ovo', 'Salada'] 
+    ingredients: ['Pão', 'Bife', 'Queijo', 'Presunto', 'Bacon', 'Ovo', ...SALADA_COMPLETA] 
   },
   { 
     id: 'l11', categoryId: 'lanches', name: 'X-Frango', price: 23.00, 
-    ingredients: ['Pão', 'Peito de Frango', 'Ovo', 'Bacon', 'Queijo', 'Presunto', 'Salada'] 
+    ingredients: ['Pão', 'Peito de Frango', 'Ovo', 'Bacon', 'Queijo', 'Presunto', ...SALADA_COMPLETA] 
   },
   { 
     id: 'l12', categoryId: 'lanches', name: 'X-Burguer Duplo', price: 25.00, 
-    ingredients: ['Pão', '2 Bifes', '2 Presuntos', '2 Queijos', 'Salada'] 
+    ingredients: ['Pão', '2 Bifes', '2 Presuntos', '2 Queijos', ...SALADA_COMPLETA] 
   },
   { 
     id: 'l13', categoryId: 'lanches', name: 'X-Egg Duplo', price: 27.00, 
-    ingredients: ['Pão', '2 Bifes', '2 Ovos', '2 Queijos', 'Salada'] 
+    ingredients: ['Pão', '2 Bifes', '2 Ovos', '2 Queijos', ...SALADA_COMPLETA] 
   },
   { 
     id: 'l14', categoryId: 'lanches', name: 'X-Egg Bacon Duplo', price: 32.00, 
-    ingredients: ['Pão', '2 Bifes', '2 Ovos', '2 Bacon', 'Queijo', 'Salada'] 
+    ingredients: ['Pão', '2 Bifes', '2 Ovos', '2 Bacon', 'Queijo', ...SALADA_COMPLETA] 
   },
   { 
     id: 'l15', categoryId: 'lanches', name: 'X-Da Casa', price: 32.00, 
-    ingredients: ['Pão', 'Bife', 'Frango', 'Ovo', 'Bacon', 'Queijo', 'Presunto', 'Calabresa', 'Banana', 'Salada'] 
+    ingredients: ['Pão', 'Bife', 'Frango', 'Ovo', 'Bacon', 'Queijo', 'Presunto', 'Calabresa', 'Banana', ...SALADA_COMPLETA] 
   },
   { 
     id: 'l16', categoryId: 'lanches', name: 'X-Turbo', price: 45.00, 
-    ingredients: ['Pão', '3 Bifes', 'Frango', '3 Ovos', 'Bacon', '3 Queijos', '3 Presuntos', 'Calabresa', 'Salada'] 
+    ingredients: ['Pão', '3 Bifes', 'Frango', '3 Ovos', 'Bacon', '3 Queijos', '3 Presuntos', 'Calabresa', ...SALADA_COMPLETA] 
   },
 
   // --- FRANGUINHO ---
