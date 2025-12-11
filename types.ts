@@ -47,6 +47,7 @@ export interface CustomerInfo {
   
   // Endereço (Apenas para Entrega)
   address: string;
+  addressNumber: string; // Novo campo para o número
   reference: string;
   deliveryFee?: number; // Taxa de entrega manual
   

@@ -187,14 +187,14 @@ export const ACAI_COMPLEMENTS = [
 ];
 
 export const ACAI_TOPPINGS = [
-  "Amora",
-  "Chocolate",
-  "Chocolate quente",
-  "Leite condensado",
-  "Limão",
-  "Mel",
-  "Morango",
-  "Uva"
+  "Cob. Amora",
+  "Cob. Chocolate",
+  "Cob. Choc. Quente",
+  "Cob. Leite Cond.",
+  "Cob. Limão",
+  "Cob. Mel",
+  "Cob. Morango",
+  "Cob. Uva"
 ];
 
 export const ACAI_FRUITS = [

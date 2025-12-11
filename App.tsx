@@ -48,7 +48,7 @@ const Receipt = ({ order }: { order: Order | null }) => {
                 
                 {order.customer.orderType === OrderType.DELIVERY && (
                     <div className="mt-1 text-xs">
-                        <p>{order.customer.address}</p>
+                        <p>{order.customer.address}, {order.customer.addressNumber}</p>
                         {order.customer.reference && <p>Ref: {order.customer.reference}</p>}
                     </div>
                 )}
@@ -222,12 +222,31 @@ const FormView = ({
               {customer.orderType === OrderType.DELIVERY && (
                   <>
                     <div className="flex gap-2">
-                        <div className="flex-[2]">
+                        <div className="flex-[3]">
                              <Input 
-                                label="Endereço *" 
+                                label="Endereço (Rua/Bairro) *" 
                                 value={customer.address} 
                                 onChange={e => setCustomer(prev => ({...prev, address: e.target.value}))}
-                                placeholder="Rua, Número, Bairro"
+                                placeholder="Rua..."
+                            />
+                        </div>
+                        <div className="flex-1">
+                             <Input 
+                                label="Nº *" 
+                                value={customer.addressNumber} 
+                                onChange={e => setCustomer(prev => ({...prev, addressNumber: e.target.value}))}
+                                placeholder="123"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <div className="flex-[2]">
+                             <Input 
+                                label="Ponto de Referência" 
+                                value={customer.reference} 
+                                onChange={e => setCustomer(prev => ({...prev, reference: e.target.value}))}
+                                placeholder="Ex: Próximo ao mercado"
                             />
                         </div>
                         <div className="flex-1">
@@ -241,13 +260,6 @@ const FormView = ({
                             />
                         </div>
                     </div>
-                   
-                    <Input 
-                        label="Ponto de Referência" 
-                        value={customer.reference} 
-                        onChange={e => setCustomer(prev => ({...prev, reference: e.target.value}))}
-                        placeholder="Ex: Próximo ao mercado"
-                    />
                   </>
               )}
 
@@ -766,7 +778,7 @@ const SummaryView = ({
                     <p className="text-gray-300">{customer.phone}</p>
                     {customer.orderType === OrderType.DELIVERY && (
                         <p className="text-gray-400 text-sm mt-1 border-t border-white/5 pt-1 mt-1">
-                            {customer.address} <br/> 
+                            {customer.address}, {customer.addressNumber} <br/> 
                             <span className="italic">{customer.reference}</span>
                         </p>
                     )}
@@ -851,6 +863,7 @@ export default function App() {
   const [customer, setCustomer] = useState<CustomerInfo>({
     name: '',
     address: '',
+    addressNumber: '',
     reference: '',
     phone: '',
     paymentMethod: PaymentMethod.PIX,
@@ -900,6 +913,7 @@ export default function App() {
     setCustomer({
         name: '',
         address: '',
+        addressNumber: '',
         reference: '',
         phone: '',
         paymentMethod: PaymentMethod.PIX,
@@ -916,7 +930,10 @@ export default function App() {
     // Basic validation
     if (!customer.name) { alert("Nome é obrigatório."); return; }
     if (!customer.phone) { alert("Telefone é obrigatório."); return; }
-    if (customer.orderType === OrderType.DELIVERY && !customer.address) { alert("Endereço é obrigatório para entrega."); return; }
+    if (customer.orderType === OrderType.DELIVERY) {
+        if (!customer.address) { alert("Endereço é obrigatório para entrega."); return; }
+        if (!customer.addressNumber) { alert("Número da casa é obrigatório para entrega."); return; }
+    }
     if (customer.orderType === OrderType.TABLE && !customer.tableNumber) { alert("Número da mesa é obrigatório."); return; }
     
     setView('MENU');

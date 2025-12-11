@@ -129,7 +129,7 @@ export class ThermalPrinterService {
       buffer += BOLD_ON + "CLIENTE" + BOLD_OFF + LF;
       buffer += `Nome: ${order.customer.name}` + LF;
       buffer += `Tel: ${order.customer.phone}` + LF;
-      buffer += `End: ${order.customer.address}` + LF;
+      buffer += `End: ${order.customer.address}, ${order.customer.addressNumber}` + LF;
       buffer += `Ref: ${order.customer.reference}` + LF;
       buffer += `Pagamento: ${order.customer.paymentMethod}` + LF;
       buffer += "--------------------------------" + LF;
