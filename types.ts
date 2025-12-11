@@ -4,6 +4,12 @@ export enum PaymentMethod {
   CARD = 'CARTÃO'
 }
 
+export enum OrderType {
+  TABLE = 'MESA',
+  DELIVERY = 'ENTREGA',
+  COUNTER = 'BALCÃO'
+}
+
 export enum OrderStatus {
   PENDING = 'PENDENTE',
   COMPLETED = 'CONCLUÍDO',
@@ -15,23 +21,37 @@ export interface Product {
   name: string;
   price: number;
   categoryId: string;
+  description?: string;
+  ingredients?: string[]; // Lista de ingredientes padrão (ex: Pão, Bife, Salada)
+  maxSides?: number; // Quantidade máxima de acompanhamentos gratuitos (para Franguinho)
 }
 
 export interface Category {
   id: string;
   name: string;
-  icon: string; // Emoji or simple text representation
+  icon: string;
 }
 
 export interface CartItem extends Product {
+  cartId: string; // Identificador único no carrinho (para diferenciar x-burguer com salada de x-burguer sem)
   quantity: number;
+  removedIngredients?: string[]; // Itens que o cliente desmarcou
+  additions?: string[]; // Extras selecionados
+  observation?: string;
 }
 
 export interface CustomerInfo {
   name: string;
+  phone: string;
+  
+  // Endereço (Apenas para Entrega)
   address: string;
   reference: string;
-  phone: string;
+  
+  // Mesa (Apenas para Mesa)
+  tableNumber: string;
+
+  orderType: OrderType;
   paymentMethod: PaymentMethod;
 }
 
@@ -40,6 +60,6 @@ export interface Order {
   customer: CustomerInfo;
   items: CartItem[];
   total: number;
-  createdAt: string; // ISO String
+  createdAt: string;
   status: OrderStatus;
 }

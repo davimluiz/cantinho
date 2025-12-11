@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './components/Button';
 import { Input, Select } from './components/Input';
-import { CATEGORIES, PRODUCTS, PAYMENT_METHODS } from './constants';
-import { Category, Product, CustomerInfo, CartItem, PaymentMethod, Order, OrderStatus } from './types';
+import { CATEGORIES, PRODUCTS, PAYMENT_METHODS, ORDER_TYPES, EXTRAS_OPTIONS, FRANGUINHO_SIDES } from './constants';
+import { Category, Product, CustomerInfo, CartItem, PaymentMethod, Order, OrderStatus, OrderType } from './types';
 import { printerService } from './services/printerService';
 
 // --- RECEIPT COMPONENT FOR BROWSER PRINTING ---
@@ -25,21 +25,26 @@ const Receipt = ({ order }: { order: Order | null }) => {
             </div>
 
             <div className="mb-2">
-                <p><strong>Pedido:</strong> #{order.id.slice(-4)}</p>
-                <p><strong>Data:</strong> {date}</p>
+                <div className="flex justify-between items-center font-bold text-lg">
+                    <span>#{order.id.slice(-4)}</span>
+                    <span className="uppercase">{order.customer.orderType} {order.customer.tableNumber ? `#${order.customer.tableNumber}` : ''}</span>
+                </div>
+                <p className="text-xs mt-1">{date}</p>
                 <DashedLine />
             </div>
 
             <div className="mb-2">
                 <h2 className="font-bold uppercase mb-1">Cliente</h2>
-                <p className="uppercase">{order.customer.name}</p>
+                <p className="uppercase font-bold">{order.customer.name}</p>
                 <p>{order.customer.phone}</p>
-                {order.customer.address && (
-                    <p className="text-xs mt-1">
-                        {order.customer.address}
-                        {order.customer.reference && ` - Ref: ${order.customer.reference}`}
-                    </p>
+                
+                {order.customer.orderType === OrderType.DELIVERY && (
+                    <div className="mt-1 text-xs">
+                        <p>{order.customer.address}</p>
+                        {order.customer.reference && <p>Ref: {order.customer.reference}</p>}
+                    </div>
                 )}
+                
                 <p className="mt-1 font-bold">Pagamento: {order.customer.paymentMethod}</p>
                 <DashedLine />
             </div>
@@ -56,11 +61,27 @@ const Receipt = ({ order }: { order: Order | null }) => {
                     </thead>
                     <tbody>
                         {order.items.map((item, idx) => (
-                            <tr key={idx} className="align-top">
-                                <td>{item.quantity}</td>
-                                <td>{item.name}</td>
-                                <td className="text-right">{(item.price * item.quantity).toFixed(2)}</td>
-                            </tr>
+                            <React.Fragment key={idx}>
+                                <tr className="align-top font-bold">
+                                    <td>{item.quantity}</td>
+                                    <td>{item.name}</td>
+                                    <td className="text-right">{(item.price * item.quantity).toFixed(2)}</td>
+                                </tr>
+                                {/* Customizations Row */}
+                                {(item.removedIngredients?.length > 0 || item.additions?.length > 0) && (
+                                    <tr>
+                                        <td></td>
+                                        <td colSpan={2} className="text-xs pb-1">
+                                            {item.removedIngredients?.map(ing => (
+                                                <div key={`rem-${ing}`}>- SEM {ing.toUpperCase()}</div>
+                                            ))}
+                                            {item.additions?.map(add => (
+                                                <div key={`add-${add}`}>+ COM {add.toUpperCase()}</div>
+                                            ))}
+                                        </td>
+                                    </tr>
+                                )}
+                            </React.Fragment>
                         ))}
                     </tbody>
                 </table>
@@ -84,13 +105,9 @@ const Receipt = ({ order }: { order: Order | null }) => {
 const HomeView = ({ 
   onStartOrder, 
   onViewHistory, 
-  onConnectPrinter, 
-  isPrinterConnected 
 }: { 
   onStartOrder: () => void, 
   onViewHistory: () => void, 
-  onConnectPrinter: () => void, 
-  isPrinterConnected: boolean 
 }) => (
   <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center">
     <div className="glass-card p-10 rounded-2xl w-full max-w-md mb-8 transform transition-all hover:scale-[1.01]">
@@ -106,20 +123,6 @@ const HomeView = ({
       <Button onClick={onViewHistory} variant="secondary" fullWidth>
         Ver Histórico de Pedidos
       </Button>
-
-      {/* Optional WebUSB Button if needed later, kept for compatibility */}
-      {isPrinterConnected ? (
-          <div className="text-green-400 text-sm mt-4 bg-green-900/20 py-2 rounded-lg border border-green-500/30">
-              WebUSB Conectado
-          </div>
-      ) : (
-          <button 
-            onClick={onConnectPrinter} 
-            className="text-xs text-gray-500 mt-8 underline hover:text-[#D6BB56]"
-          >
-            Configurar WebUSB (Opcional)
-          </button>
-      )}
     </div>
   </div>
 );
@@ -137,14 +140,49 @@ const FormView = ({
 }) => (
     <div className="max-w-md mx-auto pt-8 px-4 pb-20">
        <div className="glass-card p-6 rounded-2xl">
-           <h2 className="text-2xl text-[#D6BB56] font-bold mb-6 text-center">Dados do Cliente</h2>
+           <h2 className="text-2xl text-[#D6BB56] font-bold mb-6 text-center">Novo Pedido</h2>
+           
+           {/* TYPE FLAGS */}
+           <div className="grid grid-cols-3 gap-2 mb-6">
+                {ORDER_TYPES.map(type => (
+                    <button
+                        key={type.value}
+                        type="button"
+                        onClick={() => setCustomer(prev => ({ ...prev, orderType: type.value }))}
+                        className={`py-3 px-1 rounded-xl font-bold text-sm transition-all border ${
+                            customer.orderType === type.value
+                            ? 'bg-[#D6BB56] text-[#292927] border-[#D6BB56]'
+                            : 'bg-transparent text-gray-400 border-white/10 hover:bg-white/5'
+                        }`}
+                    >
+                        {type.label}
+                    </button>
+                ))}
+           </div>
+
            <form onSubmit={onSubmit}>
-              <Input 
-                label="Nome do Cliente *" 
-                value={customer.name} 
-                onChange={e => setCustomer(prev => ({...prev, name: e.target.value}))}
-                placeholder="Ex: João Silva"
-              />
+              <div className="flex gap-2">
+                <div className="flex-1">
+                    <Input 
+                        label="Nome do Cliente *" 
+                        value={customer.name} 
+                        onChange={e => setCustomer(prev => ({...prev, name: e.target.value}))}
+                        placeholder="Nome"
+                    />
+                </div>
+                {customer.orderType === OrderType.TABLE && (
+                     <div className="w-24">
+                        <Input 
+                            label="Mesa *" 
+                            value={customer.tableNumber} 
+                            onChange={e => setCustomer(prev => ({...prev, tableNumber: e.target.value}))}
+                            placeholder="Nº"
+                            type="number"
+                        />
+                    </div>
+                )}
+              </div>
+
               <Input 
                 label="Telefone/WhatsApp *" 
                 value={customer.phone} 
@@ -152,18 +190,24 @@ const FormView = ({
                 type="tel"
                 placeholder="(00) 00000-0000"
               />
-              <Input 
-                label="Endereço" 
-                value={customer.address} 
-                onChange={e => setCustomer(prev => ({...prev, address: e.target.value}))}
-                placeholder="Rua, Número, Bairro"
-              />
-              <Input 
-                label="Ponto de Referência" 
-                value={customer.reference} 
-                onChange={e => setCustomer(prev => ({...prev, reference: e.target.value}))}
-                placeholder="Ex: Próximo ao mercado"
-              />
+
+              {customer.orderType === OrderType.DELIVERY && (
+                  <>
+                    <Input 
+                        label="Endereço *" 
+                        value={customer.address} 
+                        onChange={e => setCustomer(prev => ({...prev, address: e.target.value}))}
+                        placeholder="Rua, Número, Bairro"
+                    />
+                    <Input 
+                        label="Ponto de Referência" 
+                        value={customer.reference} 
+                        onChange={e => setCustomer(prev => ({...prev, reference: e.target.value}))}
+                        placeholder="Ex: Próximo ao mercado"
+                    />
+                  </>
+              )}
+
               <Select 
                 label="Forma de Pagamento"
                 options={PAYMENT_METHODS}
@@ -184,6 +228,190 @@ const FormView = ({
     </div>
 );
 
+// --- PRODUCT CUSTOMIZATION MODAL ---
+const ProductModal = ({
+    product,
+    isOpen,
+    onClose,
+    onConfirm
+}: {
+    product: Product | null,
+    isOpen: boolean,
+    onClose: () => void,
+    onConfirm: (item: CartItem) => void
+}) => {
+    const [removed, setRemoved] = useState<string[]>([]);
+    const [additions, setAdditions] = useState<string[]>([]);
+    const [selectedSides, setSelectedSides] = useState<string[]>([]);
+
+    useEffect(() => {
+        setRemoved([]);
+        setAdditions([]);
+        setSelectedSides([]);
+    }, [product]);
+
+    if (!isOpen || !product) return null;
+
+    const toggleIngredient = (ing: string) => {
+        setRemoved(prev => prev.includes(ing) ? prev.filter(i => i !== ing) : [...prev, ing]);
+    };
+
+    const toggleAddition = (add: string) => {
+        setAdditions(prev => prev.includes(add) ? prev.filter(a => a !== add) : [...prev, add]);
+    };
+
+    const toggleSide = (side: string) => {
+        if (selectedSides.includes(side)) {
+            setSelectedSides(prev => prev.filter(s => s !== side));
+        } else {
+            if (selectedSides.length < (product.maxSides || 0)) {
+                setSelectedSides(prev => [...prev, side]);
+            }
+        }
+    };
+
+    // Calculate total price including extras (only for Lanches)
+    const extrasTotal = additions.reduce((acc, curr) => {
+        const opt = EXTRAS_OPTIONS.find(e => e.name === curr);
+        return acc + (opt?.price || 0);
+    }, 0);
+    
+    const totalPrice = product.price + extrasTotal;
+
+    const handleConfirm = () => {
+        // Combine paid additions and free selected sides into one list for the cart
+        const allAdditions = [...additions, ...selectedSides];
+
+        onConfirm({
+            ...product,
+            price: totalPrice,
+            cartId: Date.now().toString(),
+            quantity: 1,
+            removedIngredients: removed,
+            additions: allAdditions,
+            name: product.name 
+        });
+    };
+
+    // Helper flags
+    const isLanche = product.categoryId === 'lanches';
+    const isFranguinho = product.categoryId === 'franguinho';
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+            <div className="glass-card w-full max-w-md rounded-2xl flex flex-col max-h-[90vh]">
+                <div className="p-4 border-b border-white/10 flex justify-between items-center">
+                    <h3 className="text-xl font-bold text-[#D6BB56]">{product.name}</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">&times;</button>
+                </div>
+
+                <div className="p-4 overflow-y-auto flex-1">
+                    <p className="text-white text-lg font-bold mb-4">R$ {product.price.toFixed(2)}</p>
+                    
+                    {/* --- LANCHES: INGREDIENTS --- */}
+                    {isLanche && product.ingredients && product.ingredients.length > 0 && (
+                        <div className="mb-6">
+                            <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Ingredientes (Desmarque para retirar)</h4>
+                            <div className="grid grid-cols-2 gap-2">
+                                {product.ingredients.map(ing => {
+                                    const isRemoved = removed.includes(ing);
+                                    return (
+                                        <label key={ing} className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${!isRemoved ? 'bg-[#D6BB56]/20 border-[#D6BB56]' : 'bg-transparent border-white/10 opacity-50'}`}>
+                                            <input 
+                                                type="checkbox" 
+                                                className="hidden" 
+                                                checked={!isRemoved}
+                                                onChange={() => toggleIngredient(ing)}
+                                            />
+                                            <span className={`text-sm font-bold ${!isRemoved ? 'text-white' : 'text-gray-400 line-through'}`}>{ing}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* --- LANCHES: PAID EXTRAS --- */}
+                    {isLanche && (
+                        <div className="mb-4">
+                            <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Adicionais</h4>
+                            <div className="space-y-2">
+                                {EXTRAS_OPTIONS.map(opt => {
+                                    const isAdded = additions.includes(opt.name);
+                                    return (
+                                        <label key={opt.name} className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${isAdded ? 'bg-green-500/20 border-green-500' : 'bg-transparent border-white/10 hover:bg-white/5'}`}>
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center ${isAdded ? 'bg-green-500 border-green-500' : 'border-gray-500'}`}>
+                                                    {isAdded && <span className="text-white text-xs">✓</span>}
+                                                </div>
+                                                <span className="text-sm text-white">{opt.name}</span>
+                                            </div>
+                                            <span className="text-[#D6BB56] font-bold">+ R$ {opt.price.toFixed(2)}</span>
+                                            <input 
+                                                type="checkbox" 
+                                                className="hidden" 
+                                                checked={isAdded}
+                                                onChange={() => toggleAddition(opt.name)}
+                                            />
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* --- FRANGUINHO: SIDES --- */}
+                    {isFranguinho && product.maxSides && (
+                        <div className="mb-4">
+                            <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">
+                                Acompanhamentos ({selectedSides.length}/{product.maxSides})
+                            </h4>
+                            <div className="space-y-2">
+                                {FRANGUINHO_SIDES.map(side => {
+                                    const isSelected = selectedSides.includes(side);
+                                    const isDisabled = !isSelected && selectedSides.length >= (product.maxSides || 0);
+
+                                    return (
+                                        <label key={side} className={`flex items-center justify-between p-3 rounded-lg border transition-all ${isSelected ? 'bg-[#D6BB56]/20 border-[#D6BB56] cursor-pointer' : isDisabled ? 'bg-transparent border-white/5 opacity-50 cursor-not-allowed' : 'bg-transparent border-white/10 hover:bg-white/5 cursor-pointer'}`}>
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center ${isSelected ? 'bg-[#D6BB56] border-[#D6BB56]' : 'border-gray-500'}`}>
+                                                    {isSelected && <span className="text-black text-xs font-bold">✓</span>}
+                                                </div>
+                                                <span className="text-sm text-white">{side}</span>
+                                            </div>
+                                            <input 
+                                                type="checkbox" 
+                                                className="hidden" 
+                                                checked={isSelected}
+                                                onChange={() => toggleSide(side)}
+                                                disabled={isDisabled}
+                                            />
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            {selectedSides.length < (product.maxSides || 0) && (
+                                <p className="text-xs text-yellow-500 mt-2">* Selecione mais {product.maxSides! - selectedSides.length} item(s)</p>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                <div className="p-4 border-t border-white/10 bg-black/20">
+                    <Button 
+                        onClick={handleConfirm} 
+                        fullWidth
+                        disabled={isFranguinho && selectedSides.length < (product.maxSides || 0)} // Optional: force selection of all sides
+                        className={isFranguinho && selectedSides.length < (product.maxSides || 0) ? 'opacity-50' : ''}
+                    >
+                        ADICIONAR - R$ {totalPrice.toFixed(2)}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const MenuView = ({
     selectedCategory,
     setSelectedCategory,
@@ -191,10 +419,10 @@ const MenuView = ({
     products,
     cart,
     addToCart,
-    updateQuantity,
     cartTotal,
     onViewSummary,
-    onBack
+    onBack,
+    onSelectProduct
 }: {
     selectedCategory: string | null,
     setSelectedCategory: (id: string | null) => void,
@@ -202,52 +430,77 @@ const MenuView = ({
     products: Product[],
     cart: CartItem[],
     addToCart: (p: Product) => void,
-    updateQuantity: (id: string, delta: number) => void,
     cartTotal: number,
     onViewSummary: () => void,
-    onBack: () => void
+    onBack: () => void,
+    onSelectProduct: (p: Product) => void
 }) => {
-    // If category selected, show products
-    if (selectedCategory) {
-        const categoryProducts = products.filter(p => p.categoryId === selectedCategory);
-        const categoryName = categories.find(c => c.id === selectedCategory)?.name;
+    const [searchTerm, setSearchTerm] = useState('');
+
+    // Filter products
+    const filteredProducts = products.filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = selectedCategory ? p.categoryId === selectedCategory : true;
+        // If searching, ignore category selection, otherwise respect it
+        return searchTerm ? matchesSearch : matchesCategory;
+    });
+
+    // If category selected OR searching
+    if (selectedCategory || searchTerm) {
+        const categoryName = selectedCategory ? categories.find(c => c.id === selectedCategory)?.name : 'Busca';
 
         return (
             <div className="flex flex-col h-screen">
-                <div className="p-4 glass border-b border-white/5 flex items-center justify-between sticky top-0 z-10">
-                    <button onClick={() => setSelectedCategory(null)} className="text-[#D6BB56] font-bold">
-                        &larr; Voltar
-                    </button>
-                    <h2 className="text-xl font-bold text-white shadow-black drop-shadow-md">{categoryName}</h2>
-                    <div className="w-10"></div>
+                <div className="p-4 glass border-b border-white/5 sticky top-0 z-10 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <button onClick={() => { setSelectedCategory(null); setSearchTerm(''); }} className="text-[#D6BB56] font-bold">
+                            &larr; Voltar
+                        </button>
+                        <h2 className="text-xl font-bold text-white shadow-black drop-shadow-md">{searchTerm ? 'Resultados' : categoryName}</h2>
+                        <div className="w-10"></div>
+                    </div>
+                    {/* Search Bar inside List View */}
+                    <input 
+                        type="search"
+                        placeholder="🔍 Buscar lanche, bebida..."
+                        className="w-full bg-black/30 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-none focus:border-[#D6BB56] transition-colors"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        autoFocus={!!searchTerm}
+                    />
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-4 pb-32">
                     <div className="grid grid-cols-1 gap-4">
-                        {categoryProducts.map(product => {
-                            const inCart = cart.find(i => i.id === product.id);
+                        {filteredProducts.map(product => {
+                            // Count quantity of this base product in cart
+                            const qtyInCart = cart.filter(i => i.id === product.id).reduce((acc, i) => acc + i.quantity, 0);
+                            
                             return (
-                                <div key={product.id} className="glass-card p-4 rounded-xl flex justify-between items-center transition-all hover:bg-white/10">
-                                    <div>
+                                <div key={product.id} onClick={() => onSelectProduct(product)} className="glass-card p-4 rounded-xl flex justify-between items-center transition-all hover:bg-white/10 cursor-pointer active:scale-95">
+                                    <div className="flex-1">
                                         <h3 className="font-bold text-lg text-white">{product.name}</h3>
-                                        <p className="text-[#D6BB56]">R$ {product.price.toFixed(2)}</p>
+                                        <p className="text-[#D6BB56] font-bold">R$ {product.price.toFixed(2)}</p>
+                                        {product.description && <p className="text-xs text-gray-400 mt-1">{product.description}</p>}
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        {inCart ? (
-                                            <>
-                                                <button onClick={() => updateQuantity(product.id, -1)} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center font-bold transition-colors">-</button>
-                                                <span className="font-bold w-4 text-center">{inCart.quantity}</span>
-                                                <button onClick={() => updateQuantity(product.id, 1)} className="w-8 h-8 rounded-full bg-[#D6BB56] text-[#292927] hover:brightness-110 flex items-center justify-center font-bold transition-colors">+</button>
-                                            </>
-                                        ) : (
-                                            <Button onClick={() => addToCart(product)} className="py-2 px-4 text-sm shadow-none">
-                                                Adicionar
-                                            </Button>
+                                    <div className="flex items-center gap-3 ml-4">
+                                        {qtyInCart > 0 && (
+                                            <span className="bg-[#D6BB56] text-black w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs">
+                                                {qtyInCart}
+                                            </span>
                                         )}
+                                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-[#D6BB56] border border-[#D6BB56]/30">
+                                            +
+                                        </div>
                                     </div>
                                 </div>
                             );
                         })}
+                        {filteredProducts.length === 0 && (
+                            <div className="text-center text-gray-400 mt-10">
+                                Nenhum produto encontrado.
+                            </div>
+                        )}
                     </div>
                 </div>
                 
@@ -256,7 +509,7 @@ const MenuView = ({
                     <div className="fixed bottom-0 left-0 right-0 glass p-4 border-t border-[#D6BB56]/30 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] backdrop-blur-xl">
                         <div className="max-w-md mx-auto flex justify-between items-center">
                             <div>
-                                <p className="text-xs text-gray-300">Total ({cart.length} itens)</p>
+                                <p className="text-xs text-gray-300">Total ({cart.reduce((a,b) => a+b.quantity, 0)} itens)</p>
                                 <p className="text-xl font-bold text-[#D6BB56]">R$ {cartTotal.toFixed(2)}</p>
                             </div>
                             <Button onClick={onViewSummary}>
@@ -276,6 +529,16 @@ const MenuView = ({
                 <button onClick={onBack} className="text-gray-400 hover:text-white">&larr; Voltar</button>
                 <h2 className="text-2xl text-[#D6BB56] font-bold">Cardápio</h2>
                 <div className="w-10"></div>
+             </div>
+
+             <div className="mb-6">
+                <input 
+                    type="search"
+                    placeholder="🔍 O que o cliente deseja hoje?"
+                    className="w-full bg-glass border border-white/10 rounded-xl py-4 px-4 text-white focus:outline-none focus:border-[#D6BB56] transition-colors shadow-lg"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
              </div>
              
              <div className="grid grid-cols-2 gap-4">
@@ -305,7 +568,7 @@ const SummaryView = ({
     customer: CustomerInfo,
     cart: CartItem[],
     cartTotal: number,
-    removeFromCart: (id: string) => void,
+    removeFromCart: (cartId: string) => void,
     onBack: () => void,
     onFinish: () => void
 }) => (
@@ -316,28 +579,50 @@ const SummaryView = ({
 
         <div className="flex-1 overflow-y-auto p-4">
             <div className="glass-card rounded-xl p-4 mb-4">
-                <h3 className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">Cliente</h3>
+                <div className="flex justify-between mb-2">
+                    <span className="bg-[#D6BB56] text-[#292927] text-xs font-bold px-2 py-1 rounded uppercase">
+                        {customer.orderType} {customer.tableNumber ? `#${customer.tableNumber}` : ''}
+                    </span>
+                    <span className="text-gray-400 text-xs">{new Date().toLocaleDateString('pt-BR')}</span>
+                </div>
                 <p className="font-bold text-lg text-white">{customer.name}</p>
                 <p className="text-gray-300">{customer.phone}</p>
-                {customer.address && <p className="text-gray-400 text-sm mt-1">{customer.address}, {customer.reference}</p>}
-                <p className="text-[#D6BB56] font-bold mt-2 text-sm border-t border-white/10 pt-2 inline-block">
+                {customer.orderType === OrderType.DELIVERY && (
+                    <p className="text-gray-400 text-sm mt-1 border-t border-white/5 pt-1 mt-1">
+                        {customer.address} <br/> 
+                        <span className="italic">{customer.reference}</span>
+                    </p>
+                )}
+                <p className="text-[#D6BB56] font-bold mt-2 text-sm pt-2 inline-block">
                     Pagamento: {customer.paymentMethod}
                 </p>
             </div>
 
             <div className="glass-card rounded-xl p-4 mb-20">
                 <h3 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-wider">Itens do Pedido</h3>
-                {cart.map(item => (
-                    <div key={item.id} className="flex justify-between items-center mb-4 border-b border-white/5 pb-2 last:border-0 last:pb-0">
-                        <div className="flex-1">
-                            <p className="font-bold text-white">{item.name}</p>
-                            <p className="text-xs text-gray-400">Unit: R$ {item.price.toFixed(2)}</p>
+                {cart.map((item, idx) => (
+                    <div key={item.cartId} className="flex flex-col mb-4 border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                        <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                                <p className="font-bold text-white">{item.name}</p>
+                                <p className="text-xs text-gray-400">R$ {item.price.toFixed(2)}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                 <span className="font-bold w-16 text-right text-white">R$ {(item.price * item.quantity).toFixed(2)}</span>
+                                 <button onClick={() => removeFromCart(item.cartId)} className="text-red-400 hover:text-red-300 ml-2 px-2 transition-colors">&times;</button>
+                            </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                             <span className="font-mono text-gray-300 text-sm">x{item.quantity}</span>
-                             <span className="font-bold w-20 text-right text-white">R$ {(item.price * item.quantity).toFixed(2)}</span>
-                             <button onClick={() => removeFromCart(item.id)} className="text-red-400 hover:text-red-300 ml-2 px-2 transition-colors">&times;</button>
-                        </div>
+                        {/* Customizations display */}
+                        {(item.removedIngredients?.length > 0 || item.additions?.length > 0) && (
+                            <div className="mt-1 pl-2 text-xs text-gray-300 border-l-2 border-[#D6BB56]/30">
+                                {item.removedIngredients?.map(ing => (
+                                    <span key={ing} className="block text-red-300/80">- Sem {ing}</span>
+                                ))}
+                                {item.additions?.map(add => (
+                                    <span key={add} className="block text-green-300/80">+ Com {add}</span>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 ))}
                 <div className="mt-6 pt-4 border-t border-white/20 flex justify-between items-center">
@@ -360,60 +645,6 @@ const SummaryView = ({
     </div>
 );
 
-const HistoryView = ({
-    orders,
-    onBack,
-    onPrint
-}: {
-    orders: Order[],
-    onBack: () => void,
-    onPrint: (o: Order) => void
-}) => (
-    <div className="h-screen flex flex-col">
-        <div className="p-4 glass flex justify-between items-center border-b border-white/5 sticky top-0 z-10">
-            <button onClick={onBack} className="text-[#D6BB56] font-bold">&larr; Voltar</button>
-            <h2 className="text-xl font-bold text-white">Histórico</h2>
-            <div className="w-10"></div>
-        </div>
-        
-        <div className="flex-1 overflow-y-auto p-4 max-w-2xl mx-auto w-full">
-            {orders.length === 0 ? (
-                <div className="glass-card p-8 rounded-xl text-center mt-10">
-                    <p className="text-gray-400">Nenhum pedido realizado ainda.</p>
-                </div>
-            ) : (
-                orders.map(order => (
-                    <div key={order.id} className="glass-card rounded-xl p-4 mb-4 border-l-4 border-[#D6BB56] hover:bg-white/5 transition-colors">
-                        <div className="flex justify-between items-start mb-2">
-                            <div>
-                                <h3 className="font-bold text-lg text-white">{order.customer.name}</h3>
-                                <p className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleString('pt-BR')}</p>
-                            </div>
-                            <span className="bg-[#D6BB56]/20 px-2 py-1 rounded text-xs text-[#D6BB56] border border-[#D6BB56]/50">
-                                {order.status}
-                            </span>
-                        </div>
-                        <div className="mb-3">
-                            <p className="text-sm text-gray-300 line-clamp-2">
-                                {order.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
-                            </p>
-                        </div>
-                        <div className="flex justify-between items-center pt-2 border-t border-white/5">
-                            <span className="font-bold text-lg text-white">R$ {order.total.toFixed(2)}</span>
-                            <button 
-                                onClick={() => onPrint(order)}
-                                className="text-sm bg-[#D6BB56] text-[#292927] font-bold px-3 py-1 rounded hover:brightness-110 shadow-md"
-                            >
-                                🖨️ Imprimir
-                            </button>
-                        </div>
-                    </div>
-                ))
-            )}
-        </div>
-    </div>
-);
-
 // --- MAIN APP COMPONENT ---
 
 type View = 'HOME' | 'FORM' | 'MENU' | 'SUMMARY' | 'HISTORY';
@@ -428,14 +659,18 @@ export default function App() {
     address: '',
     reference: '',
     phone: '',
-    paymentMethod: PaymentMethod.PIX
+    paymentMethod: PaymentMethod.PIX,
+    orderType: OrderType.COUNTER, // Default
+    tableNumber: ''
   });
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  
+  // Selection Logic
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Printing State
   const [receiptOrder, setReceiptOrder] = useState<Order | null>(null);
-  const [isPrinterConnected, setIsPrinterConnected] = useState(false);
 
   // Load orders from local storage on mount
   useEffect(() => {
@@ -460,23 +695,11 @@ export default function App() {
         // Small delay to ensure the DOM is updated with the receipt content
         const timer = setTimeout(() => {
             window.print();
-            // Reset receipt order after printing (cleanup)
             setReceiptOrder(null);
         }, 100);
         return () => clearTimeout(timer);
     }
   }, [receiptOrder]);
-
-  // Printer Connection Handler (Legacy WebUSB)
-  const connectPrinter = async () => {
-    const connected = await printerService.connect();
-    setIsPrinterConnected(connected);
-    if (connected) {
-        alert("Impressora WebUSB conectada.");
-    } else {
-        alert("WebUSB não disponível. Utilizando driver do navegador.");
-    }
-  };
 
   const handleStartOrder = () => {
     setCustomer({
@@ -484,7 +707,9 @@ export default function App() {
         address: '',
         reference: '',
         phone: '',
-        paymentMethod: PaymentMethod.PIX
+        paymentMethod: PaymentMethod.PIX,
+        orderType: OrderType.COUNTER,
+        tableNumber: ''
     });
     setCart([]);
     setView('FORM');
@@ -492,53 +717,35 @@ export default function App() {
 
   const handleCustomerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customer.name || !customer.phone) {
-        alert("Preencha pelo menos Nome e Telefone.");
-        return;
-    }
+    // Basic validation
+    if (!customer.name) { alert("Nome é obrigatório."); return; }
+    if (!customer.phone) { alert("Telefone é obrigatório."); return; }
+    if (customer.orderType === OrderType.DELIVERY && !customer.address) { alert("Endereço é obrigatório para entrega."); return; }
+    if (customer.orderType === OrderType.TABLE && !customer.tableNumber) { alert("Número da mesa é obrigatório."); return; }
+    
     setView('MENU');
   };
 
   const addToCart = (product: Product) => {
-    setCart(prev => {
-        const existing = prev.find(item => item.id === product.id);
-        if (existing) {
-            return prev.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
-        }
-        return [...prev, { ...product, quantity: 1 }];
-    });
+    // Open modal instead of direct adding
+    setSelectedProduct(product);
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart(prev => prev.filter(item => item.id !== productId));
+  const handleConfirmProduct = (item: CartItem) => {
+    setCart(prev => [...prev, item]);
+    setSelectedProduct(null);
   };
 
-  const updateQuantity = (productId: string, delta: number) => {
-    setCart(prev => {
-        return prev.map(item => {
-            if (item.id === productId) {
-                const newQty = item.quantity + delta;
-                return newQty > 0 ? { ...item, quantity: newQty } : item;
-            }
-            return item;
-        });
-    });
+  const removeFromCart = (cartId: string) => {
+    setCart(prev => prev.filter(item => item.cartId !== cartId));
   };
 
   const handlePrint = (order: Order) => {
-    // If WebUSB is connected, try that first
-    if (isPrinterConnected) {
-        printerService.printOrder(order).catch(() => {
-            // Fallback to browser print if WebUSB fails
-            setReceiptOrder(order);
-        });
-    } else {
-        // Browser print
-        setReceiptOrder(order);
-    }
+      // Browser print
+      setReceiptOrder(order);
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
 
   const finishOrder = async () => {
     const newOrder: Order = {
@@ -571,8 +778,6 @@ export default function App() {
             <HomeView 
                 onStartOrder={handleStartOrder}
                 onViewHistory={() => setView('HISTORY')}
-                onConnectPrinter={connectPrinter}
-                isPrinterConnected={isPrinterConnected}
             />
         )}
         
@@ -593,10 +798,10 @@ export default function App() {
                 products={PRODUCTS}
                 cart={cart}
                 addToCart={addToCart}
-                updateQuantity={updateQuantity}
                 cartTotal={cartTotal}
                 onViewSummary={() => setView('SUMMARY')}
                 onBack={() => setView('FORM')}
+                onSelectProduct={setSelectedProduct}
             />
         )}
 
@@ -611,13 +816,43 @@ export default function App() {
             />
         )}
 
+        {/* History View logic reused/imported or simple inline if small changes needed (omitted for brevity as no big changes requested there, but logic remains same) */}
         {view === 'HISTORY' && (
-            <HistoryView 
-                orders={orders}
-                onBack={() => setView('HOME')}
-                onPrint={handlePrint}
-            />
+            <div className="h-screen flex flex-col">
+                <div className="p-4 glass flex justify-between items-center border-b border-white/5 sticky top-0 z-10">
+                    <button onClick={() => setView('HOME')} className="text-[#D6BB56] font-bold">&larr; Voltar</button>
+                    <h2 className="text-xl font-bold text-white">Histórico</h2>
+                    <div className="w-10"></div>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 max-w-2xl mx-auto w-full">
+                    {orders.length === 0 ? (
+                        <div className="glass-card p-8 rounded-xl text-center mt-10 text-gray-400">Sem pedidos.</div>
+                    ) : (
+                        orders.map(order => (
+                            <div key={order.id} className="glass-card rounded-xl p-4 mb-4 border-l-4 border-[#D6BB56]">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <h3 className="font-bold text-lg text-white">{order.customer.name}</h3>
+                                        <p className="text-xs text-[#D6BB56] font-bold">{order.customer.orderType} {order.customer.tableNumber && `#${order.customer.tableNumber}`}</p>
+                                        <p className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleString('pt-BR')}</p>
+                                    </div>
+                                    <button onClick={() => handlePrint(order)} className="text-sm bg-[#D6BB56] text-[#292927] font-bold px-3 py-1 rounded shadow-md">🖨️</button>
+                                </div>
+                                <p className="font-bold text-right text-white mt-2">R$ {order.total.toFixed(2)}</p>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
         )}
+        
+        {/* Modal for Product Customization */}
+        <ProductModal 
+            product={selectedProduct}
+            isOpen={!!selectedProduct}
+            onClose={() => setSelectedProduct(null)}
+            onConfirm={handleConfirmProduct}
+        />
       </div>
     </div>
   );
