@@ -16,6 +16,10 @@ const Receipt = ({ order }: { order: Order | null }) => {
         <div className="w-full border-b border-black border-dashed my-2" style={{ borderBottomStyle: 'dashed' }}></div>
     );
 
+    // Calculate subtotal (items only) to show clear breakdown
+    const subtotal = order.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const deliveryFee = order.customer.deliveryFee || 0;
+
     return (
         <div className="w-full max-w-[80mm] mx-auto text-black font-mono text-sm p-2">
             <div className="text-center">
@@ -88,8 +92,21 @@ const Receipt = ({ order }: { order: Order | null }) => {
                 <DashedLine />
             </div>
 
-            <div className="text-right text-lg font-bold mb-4">
-                TOTAL: R$ {order.total.toFixed(2)}
+            <div className="flex flex-col items-end text-right mb-4">
+                <div className="w-full flex justify-between text-xs mb-1">
+                    <span>Subtotal:</span>
+                    <span>R$ {subtotal.toFixed(2)}</span>
+                </div>
+                {order.customer.orderType === OrderType.DELIVERY && (
+                    <div className="w-full flex justify-between text-xs mb-1 font-bold">
+                        <span>Taxa de Entrega:</span>
+                        <span>R$ {deliveryFee.toFixed(2)}</span>
+                    </div>
+                )}
+                <div className="w-full flex justify-between text-lg font-bold border-t border-black border-dashed pt-1 mt-1">
+                    <span>TOTAL:</span>
+                    <span>R$ {order.total.toFixed(2)}</span>
+                </div>
             </div>
 
             <div className="text-center text-xs mt-4">
@@ -193,12 +210,27 @@ const FormView = ({
 
               {customer.orderType === OrderType.DELIVERY && (
                   <>
-                    <Input 
-                        label="Endereço *" 
-                        value={customer.address} 
-                        onChange={e => setCustomer(prev => ({...prev, address: e.target.value}))}
-                        placeholder="Rua, Número, Bairro"
-                    />
+                    <div className="flex gap-2">
+                        <div className="flex-[2]">
+                             <Input 
+                                label="Endereço *" 
+                                value={customer.address} 
+                                onChange={e => setCustomer(prev => ({...prev, address: e.target.value}))}
+                                placeholder="Rua, Número, Bairro"
+                            />
+                        </div>
+                        <div className="flex-1">
+                             <Input 
+                                label="Taxa (R$)" 
+                                type="number"
+                                step="0.50"
+                                value={customer.deliveryFee || ''} 
+                                onChange={e => setCustomer(prev => ({...prev, deliveryFee: parseFloat(e.target.value)}))}
+                                placeholder="0.00"
+                            />
+                        </div>
+                    </div>
+                   
                     <Input 
                         label="Ponto de Referência" 
                         value={customer.reference} 
@@ -571,79 +603,99 @@ const SummaryView = ({
     removeFromCart: (cartId: string) => void,
     onBack: () => void,
     onFinish: () => void
-}) => (
-    <div className="flex flex-col h-screen">
-        <div className="p-4 glass border-b border-white/5 sticky top-0 z-10">
-            <h2 className="text-xl text-[#D6BB56] font-bold text-center">Resumo do Pedido</h2>
-        </div>
+}) => {
+    
+    // Calculate final total including delivery fee
+    const deliveryFee = customer.orderType === OrderType.DELIVERY ? (customer.deliveryFee || 0) : 0;
+    const finalTotal = cartTotal + deliveryFee;
 
-        <div className="flex-1 overflow-y-auto p-4">
-            <div className="glass-card rounded-xl p-4 mb-4">
-                <div className="flex justify-between mb-2">
-                    <span className="bg-[#D6BB56] text-[#292927] text-xs font-bold px-2 py-1 rounded uppercase">
-                        {customer.orderType} {customer.tableNumber ? `#${customer.tableNumber}` : ''}
-                    </span>
-                    <span className="text-gray-400 text-xs">{new Date().toLocaleDateString('pt-BR')}</span>
-                </div>
-                <p className="font-bold text-lg text-white">{customer.name}</p>
-                <p className="text-gray-300">{customer.phone}</p>
-                {customer.orderType === OrderType.DELIVERY && (
-                    <p className="text-gray-400 text-sm mt-1 border-t border-white/5 pt-1 mt-1">
-                        {customer.address} <br/> 
-                        <span className="italic">{customer.reference}</span>
-                    </p>
-                )}
-                <p className="text-[#D6BB56] font-bold mt-2 text-sm pt-2 inline-block">
-                    Pagamento: {customer.paymentMethod}
-                </p>
+    return (
+        <div className="flex flex-col h-screen">
+            <div className="p-4 glass border-b border-white/5 sticky top-0 z-10">
+                <h2 className="text-xl text-[#D6BB56] font-bold text-center">Resumo do Pedido</h2>
             </div>
 
-            <div className="glass-card rounded-xl p-4 mb-20">
-                <h3 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-wider">Itens do Pedido</h3>
-                {cart.map((item, idx) => (
-                    <div key={item.cartId} className="flex flex-col mb-4 border-b border-white/5 pb-2 last:border-0 last:pb-0">
-                        <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                                <p className="font-bold text-white">{item.name}</p>
-                                <p className="text-xs text-gray-400">R$ {item.price.toFixed(2)}</p>
+            <div className="flex-1 overflow-y-auto p-4">
+                <div className="glass-card rounded-xl p-4 mb-4">
+                    <div className="flex justify-between mb-2">
+                        <span className="bg-[#D6BB56] text-[#292927] text-xs font-bold px-2 py-1 rounded uppercase">
+                            {customer.orderType} {customer.tableNumber ? `#${customer.tableNumber}` : ''}
+                        </span>
+                        <span className="text-gray-400 text-xs">{new Date().toLocaleDateString('pt-BR')}</span>
+                    </div>
+                    <p className="font-bold text-lg text-white">{customer.name}</p>
+                    <p className="text-gray-300">{customer.phone}</p>
+                    {customer.orderType === OrderType.DELIVERY && (
+                        <p className="text-gray-400 text-sm mt-1 border-t border-white/5 pt-1 mt-1">
+                            {customer.address} <br/> 
+                            <span className="italic">{customer.reference}</span>
+                        </p>
+                    )}
+                    <p className="text-[#D6BB56] font-bold mt-2 text-sm pt-2 inline-block">
+                        Pagamento: {customer.paymentMethod}
+                    </p>
+                </div>
+
+                <div className="glass-card rounded-xl p-4 mb-20">
+                    <h3 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-wider">Itens do Pedido</h3>
+                    {cart.map((item, idx) => (
+                        <div key={item.cartId} className="flex flex-col mb-4 border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                            <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                    <p className="font-bold text-white">{item.name}</p>
+                                    <p className="text-xs text-gray-400">R$ {item.price.toFixed(2)}</p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="font-bold w-16 text-right text-white">R$ {(item.price * item.quantity).toFixed(2)}</span>
+                                    <button onClick={() => removeFromCart(item.cartId)} className="text-red-400 hover:text-red-300 ml-2 px-2 transition-colors">&times;</button>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                 <span className="font-bold w-16 text-right text-white">R$ {(item.price * item.quantity).toFixed(2)}</span>
-                                 <button onClick={() => removeFromCart(item.cartId)} className="text-red-400 hover:text-red-300 ml-2 px-2 transition-colors">&times;</button>
-                            </div>
+                            {/* Customizations display */}
+                            {(item.removedIngredients?.length > 0 || item.additions?.length > 0) && (
+                                <div className="mt-1 pl-2 text-xs text-gray-300 border-l-2 border-[#D6BB56]/30">
+                                    {item.removedIngredients?.map(ing => (
+                                        <span key={ing} className="block text-red-300/80">- Sem {ing}</span>
+                                    ))}
+                                    {item.additions?.map(add => (
+                                        <span key={add} className="block text-green-300/80">+ Com {add}</span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                        {/* Customizations display */}
-                        {(item.removedIngredients?.length > 0 || item.additions?.length > 0) && (
-                            <div className="mt-1 pl-2 text-xs text-gray-300 border-l-2 border-[#D6BB56]/30">
-                                {item.removedIngredients?.map(ing => (
-                                    <span key={ing} className="block text-red-300/80">- Sem {ing}</span>
-                                ))}
-                                {item.additions?.map(add => (
-                                    <span key={add} className="block text-green-300/80">+ Com {add}</span>
-                                ))}
+                    ))}
+                    
+                    <div className="mt-6 pt-4 border-t border-white/20">
+                        <div className="flex justify-between items-center mb-1 text-gray-300 text-sm">
+                            <span>Subtotal</span>
+                            <span>R$ {cartTotal.toFixed(2)}</span>
+                        </div>
+                        {customer.orderType === OrderType.DELIVERY && (
+                            <div className="flex justify-between items-center mb-1 text-white font-bold text-sm">
+                                <span>Taxa de Entrega</span>
+                                <span>R$ {deliveryFee.toFixed(2)}</span>
                             </div>
                         )}
+                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/5">
+                            <span className="text-xl font-bold text-white">TOTAL</span>
+                            <span className="text-2xl font-bold text-[#D6BB56]">R$ {finalTotal.toFixed(2)}</span>
+                        </div>
                     </div>
-                ))}
-                <div className="mt-6 pt-4 border-t border-white/20 flex justify-between items-center">
-                    <span className="text-xl font-bold text-white">TOTAL</span>
-                    <span className="text-2xl font-bold text-[#D6BB56]">R$ {cartTotal.toFixed(2)}</span>
+                </div>
+            </div>
+
+            <div className="p-4 glass border-t border-white/5">
+                <div className="flex gap-4 max-w-md mx-auto">
+                    <Button variant="secondary" onClick={onBack} className="flex-1">
+                        Voltar
+                    </Button>
+                    <Button onClick={onFinish} className="flex-1 shadow-lg shadow-[#D6BB56]/20">
+                        FINALIZAR
+                    </Button>
                 </div>
             </div>
         </div>
-
-        <div className="p-4 glass border-t border-white/5">
-            <div className="flex gap-4 max-w-md mx-auto">
-                <Button variant="secondary" onClick={onBack} className="flex-1">
-                    Voltar
-                </Button>
-                <Button onClick={onFinish} className="flex-1 shadow-lg shadow-[#D6BB56]/20">
-                    FINALIZAR
-                </Button>
-            </div>
-        </div>
-    </div>
-);
+    );
+};
 
 // --- MAIN APP COMPONENT ---
 
@@ -661,7 +713,8 @@ export default function App() {
     phone: '',
     paymentMethod: PaymentMethod.PIX,
     orderType: OrderType.COUNTER, // Default
-    tableNumber: ''
+    tableNumber: '',
+    deliveryFee: 0
   });
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -709,7 +762,8 @@ export default function App() {
         phone: '',
         paymentMethod: PaymentMethod.PIX,
         orderType: OrderType.COUNTER,
-        tableNumber: ''
+        tableNumber: '',
+        deliveryFee: 0
     });
     setCart([]);
     setView('FORM');
@@ -748,11 +802,15 @@ export default function App() {
   const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
 
   const finishOrder = async () => {
+    // Calculate final total with fee
+    const deliveryFee = customer.orderType === OrderType.DELIVERY ? (customer.deliveryFee || 0) : 0;
+    const finalTotal = cartTotal + deliveryFee;
+
     const newOrder: Order = {
         id: Date.now().toString(),
         customer,
         items: cart,
-        total: cartTotal,
+        total: finalTotal, // Save with fee
         createdAt: new Date().toISOString(),
         status: OrderStatus.PENDING
     };
