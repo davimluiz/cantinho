@@ -328,6 +328,59 @@ const FormView = ({
     </div>
 );
 
+// --- MANUAL ITEM MODAL ---
+const ManualItemModal = ({
+    isOpen,
+    onClose,
+    onConfirm
+}: {
+    isOpen: boolean,
+    onClose: () => void,
+    onConfirm: (item: CartItem) => void
+}) => {
+    const [name, setName] = useState('');
+    const [price, setPrice] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+            setName('');
+            setPrice('');
+        }
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const handleConfirm = () => {
+        if (!name || !price) {
+            alert("Preencha nome e valor.");
+            return;
+        }
+        onConfirm({
+            id: 'manual-' + Date.now(),
+            cartId: 'manual-' + Date.now(),
+            name: name,
+            price: parseFloat(price),
+            categoryId: 'manual',
+            quantity: 1,
+        });
+    };
+
+    return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+            <div className="glass-card w-full max-w-sm rounded-2xl p-6">
+                <h3 className="text-xl font-bold text-[#D6BB56] mb-6">Item Manual</h3>
+                <Input label="Nome do Item" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Item especial" autoFocus />
+                <Input label="Valor (R$)" type="number" step="0.50" value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" />
+                
+                <div className="flex gap-3 mt-6">
+                    <Button variant="secondary" onClick={onClose} className="flex-1">Cancelar</Button>
+                    <Button onClick={handleConfirm} className="flex-1">Adicionar</Button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- PRODUCT CUSTOMIZATION MODAL ---
 const ProductModal = ({
     product,
@@ -670,7 +723,8 @@ const MenuView = ({
     cartTotal,
     onViewSummary,
     onBack,
-    onSelectProduct
+    onSelectProduct,
+    onManualItem
 }: {
     selectedCategory: string | null,
     setSelectedCategory: (id: string | null) => void,
@@ -681,7 +735,8 @@ const MenuView = ({
     cartTotal: number,
     onViewSummary: () => void,
     onBack: () => void,
-    onSelectProduct: (p: Product) => void
+    onSelectProduct: (p: Product) => void,
+    onManualItem: () => void
 }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -720,6 +775,20 @@ const MenuView = ({
                 
                 <div className="flex-1 overflow-y-auto p-4 pb-32">
                     <div className="grid grid-cols-1 gap-4">
+                        {/* MANUAL ITEM BUTTON */}
+                        <div 
+                            onClick={onManualItem}
+                            className="glass-card p-4 rounded-xl flex justify-between items-center border-dashed border-2 border-[#D6BB56]/50 bg-[#D6BB56]/5 hover:bg-[#D6BB56]/10 cursor-pointer transition-all active:scale-95"
+                        >
+                            <div className="flex-1">
+                                <h3 className="font-bold text-lg text-[#D6BB56]">ITEM MANUAL / PERSONALIZADO</h3>
+                                <p className="text-gray-400 text-sm">Digite nome e valor na hora</p>
+                            </div>
+                            <div className="w-10 h-10 rounded-full bg-[#D6BB56] flex items-center justify-center text-black font-bold">
+                                ➕
+                            </div>
+                        </div>
+
                         {filteredProducts.map(product => {
                             // Count quantity of this base product in cart
                             const qtyInCart = cart.filter(i => i.id === product.id).reduce((acc, i) => acc + i.quantity, 0);
@@ -964,6 +1033,7 @@ export default function App() {
   
   // Selection Logic
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isManualModalOpen, setIsManualModalOpen] = useState(false);
 
   // Printing State
   const [receiptOrder, setReceiptOrder] = useState<Order | null>(null);
@@ -1047,6 +1117,7 @@ export default function App() {
   const handleConfirmProduct = (item: CartItem) => {
     setCart(prev => [...prev, item]);
     setSelectedProduct(null);
+    setIsManualModalOpen(false);
   };
 
   const removeFromCart = (cartId: string) => {
@@ -1119,6 +1190,7 @@ export default function App() {
                 onViewSummary={() => setView('SUMMARY')}
                 onBack={() => setView('FORM')}
                 onSelectProduct={setSelectedProduct}
+                onManualItem={() => setIsManualModalOpen(true)}
             />
         )}
 
@@ -1179,11 +1251,16 @@ export default function App() {
             </div>
         )}
         
-        {/* Modal for Product Customization */}
+        {/* Modals */}
         <ProductModal 
             product={selectedProduct}
             isOpen={!!selectedProduct}
             onClose={() => setSelectedProduct(null)}
+            onConfirm={handleConfirmProduct}
+        />
+        <ManualItemModal
+            isOpen={isManualModalOpen}
+            onClose={() => setIsManualModalOpen(false)}
             onConfirm={handleConfirmProduct}
         />
       </div>
