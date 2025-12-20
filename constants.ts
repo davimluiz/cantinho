@@ -129,12 +129,15 @@ export const PRODUCTS: Product[] = [
   { id: 'b8', categoryId: 'bebidas', name: 'Coca-Cola 600ml', price: 8.00 },
   { id: 'b9', categoryId: 'bebidas', name: 'Coca-Cola 1.5L', price: 12.00 },
   { id: 'b10', categoryId: 'bebidas', name: 'Coca-Cola 2L', price: 15.00 },
+  { id: 'b11', categoryId: 'bebidas', name: 'Coca Lata', price: 6.00 },
 ];
 
 export const PAYMENT_METHODS = [
   { value: PaymentMethod.PIX, label: 'PIX' },
   { value: PaymentMethod.CASH, label: 'Dinheiro' },
   { value: PaymentMethod.CARD, label: 'Cartão' },
+  { value: PaymentMethod.NOT_INFORMED, label: 'Não Informou' },
+  { value: PaymentMethod.BOLSA_ALUNO, label: 'Bolsa Aluno' },
 ];
 
 export const ORDER_TYPES = [

@@ -79,6 +79,11 @@ const Receipt = ({ order }: { order: Order | null }) => {
                                                 [{item.packaging}]
                                             </div>
                                         )}
+                                        {item.observation && (
+                                            <div className="text-[10px] uppercase font-normal text-black/70">
+                                                * {item.observation}
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="text-right">{(item.price * item.quantity).toFixed(2)}</td>
                                 </tr>
@@ -103,6 +108,14 @@ const Receipt = ({ order }: { order: Order | null }) => {
                 <DashedLine />
             </div>
 
+            {order.customer.observation && (
+                <div className="mb-2 text-xs">
+                    <p className="font-bold uppercase">Obs. Pedido:</p>
+                    <p>{order.customer.observation}</p>
+                    <DashedLine />
+                </div>
+            )}
+
             <div className="flex flex-col items-end text-right mb-4">
                 <div className="w-full flex justify-between text-xs mb-1">
                     <span>Subtotal:</span>
@@ -119,6 +132,12 @@ const Receipt = ({ order }: { order: Order | null }) => {
                     <span>R$ {order.total.toFixed(2)}</span>
                 </div>
             </div>
+
+            {order.customer.usePaidStamp && (
+                <div className="text-center mt-4 border border-black p-2 font-bold uppercase text-lg">
+                    CARIMBO DE PAGO
+                </div>
+            )}
 
             <div className="text-center text-xs mt-4">
                 <p>Obrigado pela preferência!</p>
@@ -168,7 +187,7 @@ const FormView = ({
 }) => (
     <div className="max-w-md mx-auto pt-8 px-4 pb-20">
        <div className="glass-card p-6 rounded-2xl">
-           <h2 className="text-2xl text-[#D6BB56] font-bold mb-6 text-center">Novo Pedido</h2>
+           <h2 className="text-2xl text-[#D6BB56] font-bold mb-6 text-center">Dados do Pedido</h2>
            
            {/* TYPE FLAGS */}
            <div className="grid grid-cols-3 gap-2 mb-6">
@@ -269,6 +288,32 @@ const FormView = ({
                 value={customer.paymentMethod}
                 onChange={e => setCustomer(prev => ({...prev, paymentMethod: e.target.value as PaymentMethod}))}
               />
+
+              <div className="mb-4">
+                  <label className="block text-[#D6BB56] text-sm font-bold mb-2 ml-1">
+                      Observação do Pedido
+                  </label>
+                  <textarea
+                    className="appearance-none border border-white/10 rounded-xl w-full py-3 px-4 bg-black/20 text-white leading-tight focus:outline-none focus:border-[#D6BB56] focus:ring-1 focus:ring-[#D6BB56] transition-all backdrop-blur-sm placeholder-gray-500"
+                    rows={2}
+                    placeholder="Algo especial?"
+                    value={customer.observation || ''}
+                    onChange={e => setCustomer(prev => ({...prev, observation: e.target.value}))}
+                  />
+              </div>
+
+              <div className="mb-6 flex items-center gap-3">
+                  <input
+                    id="paid-stamp"
+                    type="checkbox"
+                    className="w-5 h-5 accent-[#D6BB56]"
+                    checked={customer.usePaidStamp || false}
+                    onChange={e => setCustomer(prev => ({...prev, usePaidStamp: e.target.checked}))}
+                  />
+                  <label htmlFor="paid-stamp" className="text-gray-300 font-bold text-sm cursor-pointer">
+                      Usar Carimbo de Pago
+                  </label>
+              </div>
               
               <div className="flex gap-4 mt-8">
                 <Button type="button" variant="secondary" onClick={onCancel} className="flex-1">
@@ -298,6 +343,7 @@ const ProductModal = ({
     // Shared State
     const [removed, setRemoved] = useState<string[]>([]);
     const [additions, setAdditions] = useState<string[]>([]);
+    const [itemObservation, setItemObservation] = useState<string>('');
     
     // Franguinho State
     const [selectedSides, setSelectedSides] = useState<string[]>([]);
@@ -310,6 +356,7 @@ const ProductModal = ({
     useEffect(() => {
         setRemoved([]);
         setAdditions([]);
+        setItemObservation('');
         setSelectedSides([]);
         
         // Reset Açaí
@@ -354,6 +401,10 @@ const ProductModal = ({
     const isLanche = product.categoryId === 'lanches';
     const isFranguinho = product.categoryId === 'franguinho';
     const isAcai = product.categoryId === 'acai';
+    const isBebida = product.categoryId === 'bebidas';
+    
+    // Determine if flavor field is needed
+    const needsFlavor = isBebida && (product.name.toLowerCase().includes('suco') || product.name.toLowerCase().includes('uai'));
 
     let extraPrice = 0;
     if (isLanche) {
@@ -391,6 +442,7 @@ const ProductModal = ({
             removedIngredients: removed,
             additions: finalAdditions,
             packaging: finalPackaging,
+            observation: itemObservation,
             name: product.name 
         });
     };
@@ -406,6 +458,19 @@ const ProductModal = ({
                 <div className="p-4 overflow-y-auto flex-1">
                     <p className="text-white text-lg font-bold mb-4">R$ {product.price.toFixed(2)}</p>
                     
+                    {/* --- BEBIDAS FLAVOR --- */}
+                    {needsFlavor && (
+                        <div className="mb-4">
+                            <Input
+                                label="Qual sabor?"
+                                value={itemObservation}
+                                onChange={e => setItemObservation(e.target.value)}
+                                placeholder="Digite o sabor aqui..."
+                                autoFocus
+                            />
+                        </div>
+                    )}
+
                     {/* --- LANCHES SECTION --- */}
                     {isLanche && (
                         <>
@@ -746,14 +811,16 @@ const SummaryView = ({
     cartTotal,
     removeFromCart,
     onBack,
-    onFinish
+    onFinish,
+    onEditForm
 }: {
     customer: CustomerInfo,
     cart: CartItem[],
     cartTotal: number,
     removeFromCart: (cartId: string) => void,
     onBack: () => void,
-    onFinish: () => void
+    onFinish: () => void,
+    onEditForm: () => void
 }) => {
     
     // Calculate final total including delivery fee
@@ -762,12 +829,20 @@ const SummaryView = ({
 
     return (
         <div className="flex flex-col h-screen">
-            <div className="p-4 glass border-b border-white/5 sticky top-0 z-10">
+            <div className="p-4 glass border-b border-white/5 sticky top-0 z-10 flex justify-between items-center">
+                <button onClick={onBack} className="text-[#D6BB56] font-bold">&larr; Voltar</button>
                 <h2 className="text-xl text-[#D6BB56] font-bold text-center">Resumo do Pedido</h2>
+                <div className="w-10"></div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
-                <div className="glass-card rounded-xl p-4 mb-4">
+                <div className="glass-card rounded-xl p-4 mb-4 relative">
+                    <button 
+                        onClick={onEditForm}
+                        className="absolute top-4 right-4 text-xs bg-white/10 hover:bg-white/20 text-gray-300 px-3 py-1 rounded-full font-bold border border-white/10"
+                    >
+                        EDITAR DADOS
+                    </button>
                     <div className="flex justify-between mb-2">
                         <span className="bg-[#D6BB56] text-[#292927] text-xs font-bold px-2 py-1 rounded uppercase">
                             {customer.orderType} {customer.tableNumber ? `#${customer.tableNumber}` : ''}
@@ -785,6 +860,16 @@ const SummaryView = ({
                     <p className="text-[#D6BB56] font-bold mt-2 text-sm pt-2 inline-block">
                         Pagamento: {customer.paymentMethod}
                     </p>
+                    {customer.observation && (
+                        <div className="mt-2 text-xs text-gray-400 italic">
+                            Obs: {customer.observation}
+                        </div>
+                    )}
+                    {customer.usePaidStamp && (
+                        <div className="mt-2 text-xs font-bold text-green-400 border border-green-400/30 rounded px-2 py-1 inline-block">
+                            COM CARIMBO DE PAGO
+                        </div>
+                    )}
                 </div>
 
                 <div className="glass-card rounded-xl p-4 mb-20">
@@ -796,6 +881,7 @@ const SummaryView = ({
                                     <p className="font-bold text-white">
                                         {item.name}
                                         {item.packaging && <span className="text-xs text-[#D6BB56] ml-2 font-normal">[{item.packaging}]</span>}
+                                        {item.observation && <span className="text-xs text-[#D6BB56] ml-2 italic">(*{item.observation})</span>}
                                     </p>
                                     <p className="text-xs text-gray-400">R$ {item.price.toFixed(2)}</p>
                                 </div>
@@ -840,7 +926,7 @@ const SummaryView = ({
             <div className="p-4 glass border-t border-white/5">
                 <div className="flex gap-4 max-w-md mx-auto">
                     <Button variant="secondary" onClick={onBack} className="flex-1">
-                        Voltar
+                        Adicionar Itens
                     </Button>
                     <Button onClick={onFinish} className="flex-1 shadow-lg shadow-[#D6BB56]/20">
                         FINALIZAR
@@ -869,7 +955,9 @@ export default function App() {
     paymentMethod: PaymentMethod.PIX,
     orderType: OrderType.COUNTER, // Default
     tableNumber: '',
-    deliveryFee: 0
+    deliveryFee: 0,
+    observation: '',
+    usePaidStamp: false
   });
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -919,10 +1007,22 @@ export default function App() {
         paymentMethod: PaymentMethod.PIX,
         orderType: OrderType.COUNTER,
         tableNumber: '',
-        deliveryFee: 0
+        deliveryFee: 0,
+        observation: '',
+        usePaidStamp: false
     });
     setCart([]);
     setView('FORM');
+  };
+
+  const handleEditOrder = (order: Order) => {
+      setCustomer(order.customer);
+      setCart(order.items);
+      // Remove the old order from history to "re-finish" it as a modification
+      // Or simply keep it and create a new one. User requested "edit".
+      // Let's remove it to treat as an update flow.
+      setOrders(prev => prev.filter(o => o.id !== order.id));
+      setView('FORM');
   };
 
   const handleCustomerSubmit = (e: React.FormEvent) => {
@@ -1030,10 +1130,10 @@ export default function App() {
                 removeFromCart={removeFromCart}
                 onBack={() => setView('MENU')}
                 onFinish={finishOrder}
+                onEditForm={() => setView('FORM')}
             />
         )}
 
-        {/* History View logic reused/imported or simple inline if small changes needed (omitted for brevity as no big changes requested there, but logic remains same) */}
         {view === 'HISTORY' && (
             <div className="h-screen flex flex-col">
                 <div className="p-4 glass flex justify-between items-center border-b border-white/5 sticky top-0 z-10">
@@ -1053,7 +1153,23 @@ export default function App() {
                                         <p className="text-xs text-[#D6BB56] font-bold">{order.customer.orderType} {order.customer.tableNumber && `#${order.customer.tableNumber}`}</p>
                                         <p className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleString('pt-BR')}</p>
                                     </div>
-                                    <button onClick={() => handlePrint(order)} className="text-sm bg-[#D6BB56] text-[#292927] font-bold px-3 py-1 rounded shadow-md">🖨️</button>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => handleEditOrder(order)} 
+                                            className="text-sm bg-white/5 text-gray-300 font-bold px-3 py-1 rounded border border-white/10 hover:bg-white/10"
+                                        >
+                                            EDITAR ✏️
+                                        </button>
+                                        <button 
+                                            onClick={() => handlePrint(order)} 
+                                            className="text-sm bg-[#D6BB56] text-[#292927] font-bold px-3 py-1 rounded shadow-md hover:brightness-110"
+                                        >
+                                            REIMPRIMIR 🖨️
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="mt-2 text-xs text-gray-400">
+                                    {order.items.length} itens - {order.customer.paymentMethod}
                                 </div>
                                 <p className="font-bold text-right text-white mt-2">R$ {order.total.toFixed(2)}</p>
                             </div>

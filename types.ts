@@ -1,7 +1,9 @@
 export enum PaymentMethod {
   PIX = 'PIX',
   CASH = 'DINHEIRO',
-  CARD = 'CARTÃO'
+  CARD = 'CARTÃO',
+  NOT_INFORMED = 'NÃO INFORMOU',
+  BOLSA_ALUNO = 'BOLSA ALUNO'
 }
 
 export enum OrderType {
@@ -37,7 +39,7 @@ export interface CartItem extends Product {
   quantity: number;
   removedIngredients?: string[]; // Itens que o cliente desmarcou
   additions?: string[]; // Extras selecionados
-  observation?: string;
+  observation?: string; // Usado para sabores ou observações do item
   packaging?: string; // Para Açaí: Mesa, Com Tampa, Sem Tampa
 }
 
@@ -56,6 +58,8 @@ export interface CustomerInfo {
 
   orderType: OrderType;
   paymentMethod: PaymentMethod;
+  observation?: string; // Observação geral do pedido
+  usePaidStamp?: boolean; // Se deve incluir campo de carimbo de pago
 }
 
 export interface Order {
