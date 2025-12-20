@@ -149,6 +149,7 @@ export const ORDER_TYPES = [
 // Extras configuráveis (apenas para Lanches)
 export const EXTRAS_OPTIONS = [
     { name: 'Adicional Comum', price: 3.00 },
+    { name: 'Adicional Calabresa', price: 3.00 },
     { name: 'Bife Picanha', price: 4.50 },
     { name: 'TURBINADA (Batata 150g + Refri Mini)', price: 10.00 },
 ];
