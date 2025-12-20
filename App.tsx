@@ -841,14 +841,14 @@ const MenuView = ({
 
     // Otherwise show categories
     return (
-        <div className="max-w-md mx-auto pt-8 px-4">
+        <div className="max-w-md mx-auto pt-8 px-4 pb-32">
              <div className="flex justify-between items-center mb-6">
                 <button onClick={onBack} className="text-gray-400 hover:text-white">&larr; Voltar</button>
                 <h2 className="text-2xl text-[#D6BB56] font-bold">Cardápio</h2>
                 <div className="w-10"></div>
              </div>
 
-             <div className="mb-6">
+             <div className="mb-6 space-y-4">
                 <input 
                     type="search"
                     placeholder="🔍 O que o cliente deseja hoje?"
@@ -856,6 +856,15 @@ const MenuView = ({
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
+
+                <Button 
+                    onClick={onManualItem}
+                    fullWidth
+                    variant="secondary"
+                    className="border-dashed border-2 text-lg py-4"
+                >
+                   ➕ NOVO ITEM MANUAL
+                </Button>
              </div>
              
              <div className="grid grid-cols-2 gap-4">
@@ -870,6 +879,21 @@ const MenuView = ({
                     </button>
                 ))}
              </div>
+
+             {/* Bottom Summary Bar for Category view too */}
+             {cart.length > 0 && (
+                <div className="fixed bottom-0 left-0 right-0 glass p-4 border-t border-[#D6BB56]/30 shadow-[0_-5px_20px_rgba(0,0,0,0.5)] backdrop-blur-xl z-20">
+                    <div className="max-w-md mx-auto flex justify-between items-center">
+                        <div>
+                            <p className="text-xs text-gray-300">Total ({cart.reduce((a,b) => a+b.quantity, 0)} itens)</p>
+                            <p className="text-xl font-bold text-[#D6BB56]">R$ {cartTotal.toFixed(2)}</p>
+                        </div>
+                        <Button onClick={onViewSummary}>
+                            Ver Pedido &rarr;
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -1129,7 +1153,8 @@ export default function App() {
       setReceiptOrder(order);
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.price, 0);
+  // Corrected cartTotal calculation to include quantity
+  const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const finishOrder = async () => {
     // Calculate final total with fee
