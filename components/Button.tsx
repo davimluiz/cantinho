@@ -12,25 +12,24 @@ export const Button: React.FC<ButtonProps> = ({
   className = '',
   ...props 
 }) => {
-  // Glassmorphism base styles
-  const baseStyle = "font-bold py-3 px-6 rounded-xl transition-all active:scale-95 focus:outline-none shadow-lg disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm";
+  const baseStyle = "font-bold py-3 px-6 rounded-xl transition-all active:scale-95 focus:outline-none shadow-md disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm";
   
   const variants = {
-    // Gold gradient for primary
-    primary: "bg-gradient-to-r from-[#D6BB56] to-[#C5AB4B] text-[#1a1a1a] hover:brightness-110 border border-[#D6BB56]/50",
+    // Red gradient for primary
+    primary: "bg-gradient-to-r from-red-600 to-red-700 text-white hover:brightness-110 border border-red-500/50",
     
-    // Glassy dark for secondary
-    secondary: "bg-white/5 text-[#D6BB56] border border-[#D6BB56]/30 hover:bg-white/10",
+    // Transparent red for secondary
+    secondary: "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100",
     
-    // Glassy red for danger
-    danger: "bg-red-600/80 text-white hover:bg-red-600 border border-red-500/50"
+    // Dangerous dark red
+    danger: "bg-red-800 text-white hover:bg-red-900 border border-red-700"
   };
 
   const widthClass = fullWidth ? "w-full" : "";
 
   return (
     <button 
-      type={props.type || 'button'} // Default to button to prevent form submission bugs
+      type={props.type || 'button'} 
       className={`${baseStyle} ${variants[variant]} ${widthClass} ${className}`} 
       {...props}
     >
